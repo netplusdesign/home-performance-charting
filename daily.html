@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Up Hill House - Home Performance Charting</title>
+		<meta name="description" content="interactive home performance charting" />
+		<meta name="author" content="Larry Burks" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="stylesheet" href="style/screen.css" media="screen">
+	</head>
+	<body>
+		<div id="page">
+			<header>
+				<h1><a href="http://uphillhouse.wordpress.com">Up Hill House</a></h1>
+			</header>
+			<div id="calendar">
+				<nav>
+					<select id="slice">
+						<option selected="selected" value='2012'>2012</option>
+					</select>
+					<select id="dice">
+						<optgroup label="Monthly">
+							<option value="monthly_summary.php">Summary</option>
+							<option value="monthly_generation.php">Generation</option>
+							<option value="monthly_usage.php">Usage</option>
+							<option value="monthly_hdd.php">Heating Degree Days</option>
+							<option value="interactive_base_temp.html">Base Temp Analysis</option>
+						</optgroup>
+						<optgroup label="Daily">
+							<option id="adjusted" value="1">Net Usage</option>
+							<option id="solar" value="2">Generation</option>
+							<option id="usage" value="3">Usage</option>
+							<optgroup id="circuits" label="Daily Usage by Circuit">
+								<option id="usage-ashp" value="8">ASHP</option>
+								<option id="usage-dwh" value="7">Water Heater</option>
+								<option id="usage-range" value="13">Range</option>
+								<option id="usage-dryer" value="10">Dryer</option>
+								<option id="usage-dw" value="12">Dish Washer</option>
+								<option id="usage-wp" value="9">Water Pump</option>
+								<option id="usage-washer" value="11">Washer</option>
+								<option id="usage-other" value="14">All other</option>
+							</optgroup>
+							<optgroup label="Daily Temperature">
+								<option id="hdd" value="6">Heating Degree Days</option>
+								<option id="temp-low" value="4">Outdoor Temperature (Low)</option>
+								<option id="temp-high" value="5">Outdoor Temperature (High)</option>
+							</optgroup>
+						</optgroup>
+					</select>
+				</nav>
+				<div id="heatmap">
+					<table>
+						<caption><span id="getPrevMonth"></span> &nbsp;<span id="monthyear">Month Year</span> &nbsp;<span id="getNextMonth"></span></caption>
+					</table>
+					<img id="legend-range" src="o.png" alt="Heat map legend" height="20" />
+					<p class="legend"><span id="low-range" >L</span><span id="high-range">H</span></p>
+				</div>
+			</div>
+			<div id="chart">Building chart... </div>
+			<footer>
+				<p id="instructions">Turn device to toggle between calendar and chart view.</p>
+				<p>&copy; netplusdesign 2012</p>
+			</footer>
+		</div>
+		<script src="js/jquery-1.7.1.min.js"></script>
+		<script src="js/purl.js"></script>
+		<script src="js/highcharts.js" type="text/javascript"></script>
+		<script>
+		$(document).ready(function() 
+		{
+			// this first function fixes a orientation bug, via...
+			// http://webdesignerwall.com/tutorials/iphone-safari-viewport-scaling-bug
+			(function(doc) 
+			{
+    			var addEvent = 'addEventListener',
+       			type = 'gesturestart',
+        		qsa = 'querySelectorAll',
+        		scales = [1, 1],
+        		meta = qsa in doc ? doc[qsa]('meta[name=viewport]') : [];
+    			function fix() 
+    			{
+    			    meta.content = 'width=device-width,minimum-scale=' + scales[0] + ',maximum-scale=' + scales[1];
+      			    doc.removeEventListener(type, fix, true);
+    			}
+			    if ((meta = meta[meta.length - 1]) && addEvent in doc) 
+			    {
+			        fix();
+			        scales = [.25, 1.6];
+			        doc[addEvent](type, fix, true);
+			    }
+			}(document));
+
+    		// global variables
+    		var chart = null;
+    		var today, setDay;
+			var validDateRanges = []; // for base data (0-1) and circuit data (2-3)
+			var metaData = []; // defines data ranges, lables, mins and maxs
+			var dayData = []; // only used in calendar
+			var calPerc = []; // only used in calendar
+			var currentOption; // currently selected data series
+			var monthFile;
+			var dayFile;
+			// optArr used to determine which color and legend to use for each data series
+			var optArr = Array(null,"o","g","b","b","r","r","b","b","b","b","b","b","b","b");			
+			// setup color array for calendar heatmap
+			var colors = {
+							"o": Array( new Color('RGB',255,248,232), new Color('RGB',162,117,0)),
+							"g": Array( new Color('RGB',232,255,209), new Color('RGB',73,142,0)),
+							"b": Array( new Color('RGB',242,244,255), new Color('RGB',0,20,126)),
+							"r": Array( new Color('RGB',252,235,235), new Color('RGB',149,0,0))
+						};
+
+       		$("select#dice").change(function(event)
+       		{
+       			// if value is a URL, then go there, otherwise update
+       			if (this.value.indexOf('.') > -1)
+       			{
+	       			// if url already has a '?' then use a '&' instead
+	       			con = (this.value.indexOf('?') > -1) ? "&" : "?";
+	       			window.location.assign( this.value + con + 'year=' + $("select#slice").val() );
+       			} 
+       			else
+       			{
+					update( this.value );
+					currentOption = this.value;
+       			}
+     		});
+    		
+    		setupCalendar(); // integrate with redraw at some point
+			
+    		if (currentOption = $.url().param("option"))
+    		{
+    			currentOption = parseInt(currentOption);
+    			$("option").each( function() {
+    				this.value == currentOption ? $(this).prop('selected', true) : $(this).prop('selected', false );
+				});
+    		}
+    		else
+    		{
+    			currentOption = 1;
+    		}
+
+			// get initializing variables
+			$.get('get_daily_metadata.php', function(data) 
+			{
+				var lines = data.split('\n');  // splits the file into lines
+				$.each(lines, function(lineNo, line) 
+				{ 
+					var items = line.split(',');  // splits the line into items
+					if (items.length == 1) return false;
+					if (lineNo == 0)
+					{
+						for (i=0; i<items.length; i++)
+						{
+							dt = items[i].split('-'); // split date into parts
+							validDateRanges[i] = new Date(parseInt(dt[0]), parseInt(dt[1])-1); // creates a date
+						}
+					}
+					else 
+					{ 
+						// read in the limits
+						metaData[0] = [];
+						for (i=0; i<items.length; i++)
+						{
+							metaData[0][i] = parseFloat(items[i]);    
+						}
+					}
+				});
+				metaData[1] = Array("kWh","kWh","kWh","&deg;F","&deg;F","HDD","kWh","kWh","kWh","kWh","kWh","kWh","kWh","kWh");
+				
+				// if udate (date param in url) then use as today else use last valid month
+				if (udate = $.url().param("date"))
+				{
+					var params = udate.split('-');
+					if (params.length < 3) params.push(1);
+					setDay = new Date(params[0], params[1]-1, params[2]);
+					today = new Date(setDay);
+				}
+				else
+				{
+					today = new Date(validDateRanges[1].getFullYear(), validDateRanges[1].getMonth(), 1); // last and most recent month of data
+				}
+				utime = $.url().param("time") ? $.url().param("time") : null;
+				
+	    		// compose strings for first loads
+    			monthFile = getMonthFilename( today ); 
+				dayFile = getDayFilename( today ); 
+				
+				// load calendar data
+				getCalendarData();
+			});
+				
+			// read month day data 
+			function getCalendarData()
+			{
+				$.get(monthFile, function(data) 
+				{
+					// Split the lines
+					var lines = data.split('\n');  // splits the file into lines
+				
+					// initialize arrays
+					metaData[2] = []; // min array
+					metaData[3] = []; // max array
+					for(i=0; i<15; i++)
+					{
+						//dayData[i] = [];
+						metaData[2][i] = 10000; // min starter value
+						metaData[3][i] = -10000; // max starter value
+					}
+					// reversed for solar
+					metaData[2][2] = -10000; // min starter value
+					metaData[3][2] = 10000; // max starter value
+					
+					var offset = 1; // ensures array is 1 based, to match days of month
+					// Iterate over the lines and add series name or data
+					$.each(lines, function(lineNo, line) 
+					{ 
+						var items = line.split(','); // splits the lines into items
+						var dt = items[0].split('/'); // splits the date item
+						dayData[lineNo+offset] = [];
+						calPerc[lineNo+offset] = [];
+						dayData[lineNo+offset][0] = new Date(dt[2], dt[0], dt[1]); // creates a date
+						
+						for (i=1; i<items.length; i++)
+						{
+							dayData[lineNo+offset][i] = parseFloat(items[i]); // set data
+							if ( i==2 )
+							{	// solar is reversed
+								if (dayData[lineNo+offset][i] > metaData[2][i]) metaData[2][i] = dayData[lineNo+offset][i]; // set min
+								if (dayData[lineNo+offset][i] < metaData[3][i]) metaData[3][i] = dayData[lineNo+offset][i]; // set max
+							}
+							else
+							{
+								if (dayData[lineNo+offset][i] < metaData[2][i]) metaData[2][i] = dayData[lineNo+offset][i]; // set min
+								if (dayData[lineNo+offset][i] > metaData[3][i]) metaData[3][i] = dayData[lineNo+offset][i]; // set max 
+							}
+						}
+						
+					}); // end each
+					if (chart == null) getDayData();
+					// calc range
+					var range = [];
+					for (i=1; i<dayData.length; i++)
+					{
+						range[i] = [];
+						for (j=1; j<dayData[i].length; j++)
+						{
+							range[i][j] = (j==1) ? metaData[3][j] + Math.abs(metaData[2][j]): metaData[3][j] - metaData[2][j];
+						}
+					}
+					// calc percentage
+					for (i=1; i<dayData.length; i++)
+					{
+						calPerc[i] = [];
+						for (j=1; j<dayData[i].length; j++)
+						{
+							calPerc[i][j] = (j==2) ? 100 + Math.round( ((dayData[i][j] + range[i][j]) / range[i][j] - ((metaData[3][j] + range[i][j]) / range[i][j])) * 100 ): Math.round(((dayData[i][j] + range[i][j]) / range[i][j] - ((metaData[2][j] + range[i][j]) / range[i][j])) * 100); 
+						}
+					}
+					range = null;
+     				// call updater
+     				update( currentOption );
+
+				}); // end get
+			}
+			
+			// update calendar
+			function update( v ) 
+			{
+				var dim = DaysInMonth( today );
+				var startDay = getStartDay( today );
+				var dayCount = 1;
+				// determine whether to show previous month link
+				if(today.getMonth() > validDateRanges[0].getMonth() )
+            	{
+	    			$("<span id='getPrevMonth'><a href='\#'>&#9664;<\/a><\/span>").replaceAll('span#getPrevMonth');
+					$("span#getPrevMonth").click(function(event)
+					{
+						today.setMonth( today.getMonth()-1 ); // will this work when moving from Jan 2013 to Dec 2012?
+						redrawCalendar(event);
+					});
+				} else {
+					$("<span id='getPrevMonth'><\/span>").replaceAll('span#getPrevMonth');
+				}
+				// determine whether to show next month link
+				if(today.getMonth() < validDateRanges[1].getMonth() )
+        	    {
+	    			$("<span id='getNextMonth'><a href='\#'>&#9654;<\/a><\/span>").replaceAll('span#getNextMonth');
+	    			$("span#getNextMonth").click(function(event)
+    				{
+						today.setMonth( today.getMonth()+1 );
+						redrawCalendar(event);
+					});
+				} else {
+					$("<span id='getNextMonth'><\/span>").replaceAll('span#getNextMonth');
+				}
+				// update month and year
+				$("<span id='monthyear'>" + today.getMonthName() + " " + today.getFullYear() + "<\/span>").replaceAll('span#monthyear');
+				
+				// remove all content and calDay classes
+				$('<td><\/td>').replaceAll('td');
+				// rebuild content and classes
+				$('td').each(function(index, domEle) 
+				{
+					if((index >= startDay) && (dayCount <= dim)) 
+					{
+						// replace text and add calDay class
+						$(domEle).append(dayCount).attr('title',dayData[dayCount][v] + ' ' + metaData[1][v]);
+						if ( isNaN(dayData[dayCount][v]) )
+						{
+							$(domEle).addClass('no-data calday');
+						} 
+						else 
+						{
+							c = transition3(calPerc[dayCount][v], 100, colors[optArr[v]][0], colors[optArr[v]][1]);
+							$(domEle).attr('style', 'background: rgb(' + Math.round(c.r) + ',' + Math.round(c.g) + ',' + Math.round(c.b) + ')');
+							$(domEle).addClass('calday');
+						}
+						if (today.getDate() == dayCount)
+						{
+							$(domEle).addClass("selected");
+						}
+						
+						$(domEle).hover(function()
+						{
+			    			$(this).addClass("hover");
+
+						},function()
+						{
+     						$(this).removeClass("hover");
+   						});
+   						$(domEle).click(function(event)
+   						{
+      			    		$('td').removeClass("selected");
+      			    		$(this).addClass("selected");
+      			    		today.setDate( this.textContent );
+      			    		dayFile = getDayFilename( today );
+      			    		getDayData();
+     					});
+   				
+						dayCount++;
+					}
+				});
+			 
+				$("img#legend-range").attr({src: optArr[v] + ".png" });
+				$("#low-range").replaceWith("<span id=\"low-range\">" + metaData[2][v] + " " + metaData[1][v-1] + "<\/span>");
+				$("#high-range").replaceWith("<span id=\"high-range\">" + metaData[3][v] + " " + metaData[1][v-1] + "<\/span>");
+								
+				// show circuit level data if available
+				if( (today.getMonth() >= validDateRanges[2].getMonth()) && (today.getMonth() <= validDateRanges[3].getMonth()) )
+				{
+       				$("optgroup#circuits option").prop('disabled', false);
+     			}
+     			else
+     			{
+     				$("optgroup#circuits option").prop('disabled', true);
+     			}
+			}
+
+			function redrawCalendar(event) {
+				monthFile = getMonthFilename( today );
+				getCalendarData();
+				event.preventDefault();
+			}
+
+			function getDayData() {
+				
+				if (chart != null) chart.showLoading('Loading data...');
+				
+				$.get(dayFile, function(data) 
+				{ 
+					var options = {
+						chart : {
+							renderTo : 'chart',
+							defaultSeriesType : 'line'
+						},
+						credits: {
+            				enabled: false
+       					},
+       						legend: {
+            					borderWidth: 0
+        				},
+						title: {
+							text : today.getMonthName() + ' ' + today.getDate() + ', ' + today.getFullYear(),
+							style: {
+								color: '#000000',
+								fontWeight: 'normal',
+								fontSize: '12px'
+							}
+						},
+						xAxis : {
+							title : {
+								text : 'Hour of day',
+								style: {
+									color: '#000000',
+									fontWeight: 'normal',
+									fontSize: '10px'	
+								}
+							},
+							categories : []
+						},
+						yAxis : [{
+							title : {
+								text : 'kWh',
+								style: {
+									color: '#000000',
+									fontWeight: 'normal',
+									fontSize: '10px'	
+								}
+							}, 
+							id: 'kwh'
+						}, {
+							title : {
+								text : 'Temperature F',
+								style: {
+									color: '#000000',
+									fontWeight: 'normal',
+									fontSize: '10px'	
+								}
+							}
+						}, {
+							title : {
+								text : 'HDD',
+								style: {
+									color: '#000000',
+									fontWeight: 'normal',
+									fontSize: '10px'	
+								}
+							},
+							opposite: true
+						}],
+        				plotOptions: {
+            				series: {
+                				marker: {
+                    				enabled: false
+                				},  
+            				point: {
+                    			events: {
+                    	    		mouseOver: function() {
+                    	        		enabled = true; // this doesn't work
+                    	    		}
+                    			}
+                			},
+                				events: {
+                    				mouseOut: function() {                        
+                    	    			enabled = false; // this doesn't work
+                    				}
+                				} 
+            				}
+        				},
+						series : []
+					};
+					
+					// Split the lines
+					var lines = data.split('\n');  // splits the file into lines
+					// console.log("data: " + data);
+					var series = [];
+					
+					// Iterate over the lines and add series names or data
+					$.each(lines, function(lineNo, line) 
+					{ 
+						var items = line.split(','); // splits the line into items
+						if(lineNo == 0) 
+						{ 
+							// series
+							var z = 10;
+							for(i = 0; i < items.length-1; i++) 
+							{
+                				series[i] = new Object();
+                				series[i].name = items[i+1];
+                				series[i].data = [];
+                				if (i == 0) 
+                				{	
+                					series[i].zIndex = z;
+                					series[i].lineWidth = 5;
+                				}
+                				if (i > 0 && i < 3) 
+                				{	// solar and usage
+                					series[i].type = "area";
+                					series[i].lineWidth = 0;
+                				}
+                				if (i == 3) { series[i].yAxis = 1; } // indoor temp
+                				if (i == 4) { series[i].yAxis = 1; } // outdoor temp
+                				if (i == 5) { series[i].yAxis = 2; series[i].zIndex = z; } // hdd
+                				// 7 more columns for circuit-level data
+                				if (i > 5) { series[i].yAxis = 0; series[i].zIndex = z; }
+                				z++;
+                			}
+						}
+						else
+						{
+							// data
+							if (items.length > 1)
+							{
+								var tm = items[0].split(':'); // splits the time item
+								options.xAxis.categories.push(tm[0]); // hour
+								for (i = 0; i < items.length-1; i++) 
+								{	
+									// if eMon data and not a degree based value, then divide by 1000
+									if (i < 3 || i > 5)
+									{
+										series[i].data.push( parseFloat( items[i+1] )/1000 );
+									}
+									else
+									{
+										series[i].data.push( parseFloat( items[i+1] ) );
+									} 
+								}
+							}
+						} // end else
+					}); // end each
+					
+					// Create the chart
+					for (i=0; i < series.length; i++) 
+					{
+						options.series.push(series[i]);
+					}
+					
+					Highcharts.setOptions(
+					{
+        					colors: ['#CC9933', '#669933', '#336699', '#FF6600', '#3366CC', '#CC3333', '#FF9655', '#FFF263', '#6AF9C4']
+    				});
+    				
+    				if (chart == null) 
+    				{
+						chart = new Highcharts.Chart(options);
+						for (i=3; i<series.length;i++) chart.series[i].hide();
+						chart.series[5].show();
+					}
+					chart.yAxis[0].setExtremes( metaData[0][1]/1000 , metaData[0][0]/1000 );  // min, max for kWh
+					chart.yAxis[1].setExtremes(metaData[0][2],metaData[0][3]);  // min, max for temp
+					chart.yAxis[2].setExtremes(0,metaData[0][4]);  // min, max for HDD
+					
+					if (utime && (today.getTime() == setDay.getTime())) 
+					{ 
+						chart.xAxis[0].addPlotLine({ color: '#FF0000', width: 2, value: utime, id: 'p1' });
+					}
+					else
+					{
+						chart.xAxis[0].removePlotLine( 'p1' );
+					} 
+
+					for (i=0; i < series.length; i++) 
+					{
+						chart.series[i].setData(series[i].data);
+					}
+					chart.setTitle({ text: today.getMonthName() + ' ' + today.getDate() + ', ' + today.getFullYear() } );
+					chart.hideLoading();
+				}); // end get
+			}
+
+			function getMonthFilename( d )
+			{
+				//return "data/" + formatAddZero( (d.getMonth()+1).toString() ) + "-" + d.getFullYear() + "-day-data.csv";
+				return "get_daily_data.php?date=" + today.getFullYear() + "-" + formatAddZero( (today.getMonth()+1).toString() ) + "-" + formatAddZero( today.getDate().toString() );
+			}
+			
+			function getDayFilename( d )
+			{
+				return "get_hourly_data.php?date=" + today.getFullYear() + "-" + formatAddZero( (today.getMonth()+1).toString() ) + "-" + formatAddZero( today.getDate().toString() );
+			}
+
+			function formatAddZero( d ) 
+			{
+				if (d.length == 1) return d = "0" + d;
+				else return d;
+			}
+			
+			function Color(space, a, b, c)
+			{
+				// Color.prototype.rgb_to_hsv = function()
+				Color.prototype.rgb_to_hsv = function()
+				{
+					maxc = Math.max(this.r, this.g, this.b);
+					minc = Math.min(this.r, this.g, this.b);
+					this.v = maxc;
+					if (minc == maxc)
+					{
+						this.h = 0;
+						this.s = 0;
+						//this.v = v;
+					}  
+					diff = maxc - minc;
+					this.s = diff / maxc;
+					rc = (maxc - this.r) / diff;
+					gc = (maxc - this.g) / diff;
+					bc = (maxc - this.b) / diff;
+					if (this.r == maxc)
+					{
+						this.h = bc - gc;
+					}
+					else if (this.g == maxc) 
+					{
+						this.h = 2.0 + rc - bc;
+					}
+					else
+					{
+						this.h = 4.0 + gc - rc;
+					}
+					this.h = (this.h / 6.0) % 1.0; //comment: this calculates only the fractional part of h/6
+					//this.s = Math.round(this.s);
+					//this.v = Math.round(this.v);
+				}
+				Color.prototype.hsv_to_rgb = function()
+				{
+					if (this.s == 0.0)
+					{
+						this.r = this.g = this.b = this.v;
+					}
+					i = Math.floor(this.h*6.0); //comment: floor() should drop the fractional part
+					f = (this.h*6.0) - i;
+					p = this.v*(1.0 - this.s);
+					q = this.v*(1.0 - this.s*f);
+					t = this.v*(1.0 - this.s*(1.0 - f));
+					if ((i % 6) == 0) 
+					{ 
+						this.r = this.v;
+						this.g = t;
+						this.b = p;
+					}
+					if (i == 1) 
+					{
+						this.r = q; 
+						this.g = this.v;
+						this.b = p;
+					}
+					if (i == 2) 
+					{
+						this.r = p;
+						this.g = this.v;
+						this.b = t;
+					}
+					if (i == 3)
+					{
+						this.r = p; 
+						this.g = q;
+						this.b = this.v;
+					}
+					if (i == 4) 
+					{
+						this.r = t;
+						this.g = p;
+						this.b = this.v;
+					}
+					if (i == 5) 
+					{
+						this.r = this.v;
+						this.g = p;
+						this.b = q;
+					}
+					//this.r = Math.round(this.r);
+					//this.g = Math.round(this.g);
+					//this.b = Math.round(this.b);
+					//comment: 0 <= i <= 6, so we never come here
+				}
+				this.space = space;
+				if (space == 'RGB')
+				{
+					this.r = a;
+					this.g = b;
+					this.b = c;
+					this.rgb_to_hsv();
+				}
+				else if (space == 'HSV')
+				{
+					this.h = a;
+					this.s = b;
+					this.v = c;
+					this.hsv_to_rgb();
+				}
+			}
+			function transition(value, maximum, start_point, end_point)
+			{
+				return start_point + (end_point - start_point)*value/maximum;
+			}
+			function transition3(value, maximum, startColor, endColor)
+			{
+				r1 = transition(value, maximum, startColor.h, endColor.h);
+				r2 = transition(value, maximum, startColor.s, endColor.s);
+				r3 = transition(value, maximum, startColor.v, endColor.v);
+				return new Color( 'HSV', r1, r2, r3);
+			}
+
+			$.expr[":"].econtains = function(obj, index, meta, stack)
+			{
+				return (obj.textContent || obj.innerText || $(obj).text() || "").toLowerCase() == meta[3].toLowerCase();
+			}
+			function setupCalendar()
+			{
+				$('table').append( makeTags('tr', 6) );
+				$('tr').each(function(index, domEle) { $(domEle).append( makeTags('td', 7) ) });
+			}
+			function makeTags(tag, n) 
+			{
+				var str = '<' + tag + '></' + tag + '>', fstr = '';
+				for (i=0; i<n; i++) { fstr = fstr + str; }
+				return fstr;
+			}
+			function DaysInMonth( d )
+			{
+				return new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+			}
+			function getStartDay( d )
+			{
+				return new Date(d.getFullYear(), d.getMonth(), 1).getDay(); 
+			}			
+			Date.prototype.getMonthName = function() 
+			{
+   				return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][this.getMonth()]; 
+			}
+	
+		});
+		</script>
+	</body>
+</html>
