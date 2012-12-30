@@ -13,13 +13,24 @@
 		$date = get_post($link, 'date');
 		date_default_timezone_set('America/New_York');
 		
-	    $query = "SELECT t.date, e.adjusted_load, e.solar, e.used, ";
-	    $query .= "t.outdoor_deg_min, t.outdoor_deg_max, t.hdd, ";
+		/*
+	SELECT tu.date, e.adjusted_load, e.solar, e.used, tu.outdoor_deg_min, tu.outdoor_deg_max, th.hdd, e.water_heater, e.ashp, e.water_pump, e.dryer, e.washer, e.dishwasher, e.stove
+	FROM (SELECT date, temperature_min AS 'outdoor_deg_min', temperature_max AS 'outdoor_deg_max' FROM temperature_daily WHERE device_id = 0) tu 
+		LEFT JOIN (SELECT date, hdd FROM hdd_daily) th ON (th.date = tu.date)
+		LEFT JOIN energy_daily e ON (e.date = tu.date) 
+	WHERE YEAR(tu.date) = 2012
+		AND MONTH(tu.date) = 3;
+		 * */
+		
+	    $query = "SELECT tu.date, e.adjusted_load, e.solar, e.used, ";
+	    $query .= "tu.outdoor_deg_min, tu.outdoor_deg_max, th.hdd, ";
 	    $query .= "e.water_heater, e.ashp, e.water_pump, e.dryer, e.washer, e.dishwasher, e.stove, ";
 		$query .= "e.used-(e.water_heater+e.ashp+e.water_pump+e.dryer+e.washer+e.dishwasher+e.stove) AS 'All other circuits' ";
-		$query .= "FROM temperature_daily t LEFT JOIN energy_daily e ON t.date = e.date ";
-		$query .= "WHERE YEAR(t.date) = " . date_format(date_create($date), 'Y') . " ";
-		$query .= "AND MONTH(t.date) = " . date_format(date_create($date), 'm');
+		$query .= "FROM (SELECT date, temperature_min AS 'outdoor_deg_min', temperature_max AS 'outdoor_deg_max' FROM temperature_daily WHERE device_id = 0) tu ";
+		$query .= "LEFT JOIN (SELECT date, hdd FROM hdd_daily) th ON (th.date = tu.date) ";
+		$query .= "LEFT JOIN energy_daily e ON (e.date = tu.date) ";
+		$query .= "WHERE YEAR(tu.date) = " . date_format(date_create($date), 'Y') . " ";
+		$query .= "AND MONTH(tu.date) = " . date_format(date_create($date), 'm');
 		
 		if ($result = mysqli_query($link, $query))
 		{ 

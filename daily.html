@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<title>Up Hill House - Home Performance Charting</title>
+		<title>Home Performance Charting</title>
 		<meta name="description" content="interactive home performance charting" />
 		<meta name="author" content="Larry Burks" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,7 +11,7 @@
 	<body>
 		<div id="page">
 			<header>
-				<h1><a href="http://uphillhouse.wordpress.com">Up Hill House</a></h1>
+				<h1><a href="..">NetPlusDesign</a> &gt; <a href="http://uphillhouse.wordpress.com">Up Hill House</a></h1>
 			</header>
 			<div id="calendar">
 				<nav>
@@ -20,14 +20,14 @@
 					</select>
 					<select id="dice">
 						<optgroup label="Monthly">
-							<option value="monthly_summary.php">Summary</option>
-							<option value="monthly_generation.php">Generation</option>
-							<option value="monthly_usage.php">Usage</option>
-							<option value="monthly_hdd.php">Heating Degree Days</option>
-							<option value="interactive_base_temp.html">Base Temp Analysis</option>
+							<option value="15">Summary</option>
+							<option value="16">Generation</option>
+							<option value="17">Usage</option>
+							<option value="18">Heating Degree Days</option>
+							<option value="19">Base Temp Analysis</option>
 						</optgroup>
 						<optgroup label="Daily">
-							<option id="adjusted" value="1">Net Usage</option>
+							<option id="adjusted" value="1" selected="selected">Net Usage</option>
 							<option id="solar" value="2">Generation</option>
 							<option id="usage" value="3">Usage</option>
 							<optgroup id="circuits" label="Daily Usage by Circuit">
@@ -64,6 +64,7 @@
 		</div>
 		<script src="js/jquery-1.7.1.min.js"></script>
 		<script src="js/purl.js"></script>
+		<script src="js/date.js"></script>
 		<script src="js/highcharts.js" type="text/javascript"></script>
 		<script>
 		$(document).ready(function() 
@@ -109,25 +110,27 @@
 							"b": Array( new Color('RGB',242,244,255), new Color('RGB',0,20,126)),
 							"r": Array( new Color('RGB',252,235,235), new Color('RGB',149,0,0))
 						};
-
-       		$("select#dice").change(function(event)
-       		{
-       			// if value is a URL, then go there, otherwise update
-       			if (this.value.indexOf('.') > -1)
-       			{
-	       			// if url already has a '?' then use a '&' instead
-	       			con = (this.value.indexOf('?') > -1) ? "&" : "?";
-	       			window.location.assign( this.value + con + 'year=' + $("select#slice").val() );
-       			} 
-       			else
-       			{
+			
+			// set main navigation hadler
+			$("select#dice").change(function(event)
+			{
+				params = "?date=" + today.toString('yyyy-MM-dd') + "&option=" + this.value;
+				if ( this.value == 19 ) 
+				{
+					// goto Interactive Bae Temp page
+					window.location.assign( "interactive_base_temp.html" + params );
+				}
+				else if ( this.value > 14 )
+				{
+					// goto Monthly page
+					window.location.assign( "monthly.html" + params );	
+				}
+				else
+				{
 					update( this.value );
 					currentOption = this.value;
-       			}
-     		});
-    		
-    		setupCalendar(); // integrate with redraw at some point
-			
+				}
+			});
     		if (currentOption = $.url().param("option"))
     		{
     			currentOption = parseInt(currentOption);
@@ -139,6 +142,13 @@
     		{
     			currentOption = 1;
     		}
+			// set selector if arrived from monthly series page
+			$("select#dice").each(function()
+			{
+				( $(this).val() == currentOption ) ? $(this).prop('selected', true) : $(this).prop('selected', false);
+			});
+
+    		setupCalendar(); // integrate with redraw at some point in future
 
 			// get initializing variables
 			$.get('get_daily_metadata.php', function(data) 
@@ -337,14 +347,13 @@
       			    		dayFile = getDayFilename( today );
       			    		getDayData();
      					});
-   				
 						dayCount++;
 					}
 				});
 			 
 				$("img#legend-range").attr({src: optArr[v] + ".png" });
-				$("#low-range").replaceWith("<span id=\"low-range\">" + metaData[2][v] + " " + metaData[1][v-1] + "<\/span>");
-				$("#high-range").replaceWith("<span id=\"high-range\">" + metaData[3][v] + " " + metaData[1][v-1] + "<\/span>");
+				$("#low-range").replaceWith("<span id='low-range'>" + metaData[2][v] + " " + metaData[1][v-1] + "<\/span>");
+				$("#high-range").replaceWith("<span id='high-range'>" + metaData[3][v] + " " + metaData[1][v-1] + "<\/span>");
 								
 				// show circuit level data if available
 				if( (today.getMonth() >= validDateRanges[2].getMonth()) && (today.getMonth() <= validDateRanges[3].getMonth()) )

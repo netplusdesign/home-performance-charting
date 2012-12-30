@@ -12,12 +12,25 @@
 		$date = get_post($link, 'date');
 		date_default_timezone_set('America/New_York');
 		
-	    $query = "SELECT t.date, e.adjusted_load, e.solar, e.used, "; 
-	    $query .= "t.indoor_deg, t.outdoor_deg, t.hdd, ";
+		/*
+	SELECT ti.date, e.adjusted_load, ti.indoor_deg, tu.outdoor_deg, th.hdd, e.water_heater, e.ashp, e.water_pump, e.dryer, e.washer, e.dishwasher, e.stove,
+		e.used-(e.water_heater+e.ashp+e.water_pump+e.dryer+e.washer+e.dishwasher+e.stove) AS 'All other circuits'
+	FROM (SELECT date, temperature AS 'indoor_deg' FROM temperature_hourly WHERE device_id = 1) ti  
+		LEFT JOIN (SELECT date, temperature AS 'outdoor_deg' FROM temperature_hourly WHERE device_id = 0) tu ON (tu.date = ti.date)
+		LEFT JOIN (SELECT date, hdd FROM hdd_hourly) th ON (th.date = ti.date)
+		LEFT JOIN energy_hourly e ON (e.date = ti.date) 
+	WHERE CAST(ti.date AS DATE) = DATE('2012-03-12');
+		 * */
+		
+	    $query = "SELECT ti.date, e.adjusted_load, e.solar, e.used, "; 
+	    $query .= "ti.indoor_deg, tu.outdoor_deg, th.hdd, ";
 	    $query .= "e.water_heater, e.ashp, e.water_pump, e.dryer, e.washer, e.dishwasher, e.stove, ";
 		$query .= "e.used-(e.water_heater+e.ashp+e.water_pump+e.dryer+e.washer+e.dishwasher+e.stove) AS 'All other' ";
-		$query .= "FROM temperature_hourly t LEFT JOIN energy_hourly e ON t.date = e.date ";
-		$query .= "WHERE CAST(t.date AS DATE) = DATE('" . date_format(date_create($date), 'Y-m-d') . "')";
+		$query .= "FROM (SELECT date, temperature AS 'indoor_deg' FROM temperature_hourly WHERE device_id = 1) ti ";
+		$query .= "LEFT JOIN (SELECT date, temperature AS 'outdoor_deg' FROM temperature_hourly WHERE device_id = 0) tu ON (tu.date = ti.date) ";
+		$query .= "LEFT JOIN (SELECT date, hdd FROM hdd_hourly) th ON (th.date = ti.date) ";
+		$query .= "LEFT JOIN energy_hourly e ON (e.date = ti.date) ";
+		$query .= "WHERE CAST(ti.date AS DATE) = DATE('" . date_format(date_create($date), 'Y-m-d') . "')";
 		
 		if ($result = mysqli_query($link, $query))
 		{
