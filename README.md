@@ -13,4 +13,4 @@ Dec 30, 2012
 - Updates to data structure to enable multiple unlimited energy, temperature, humidity and water data sensors.
 - Separated database and presentation logic. PHP handles all data requests. JQuery and JS handle presentation. Many data requests now return JSON data.
 - Multiple pages have been combined into 3 main pages, Monthly, Daily and Interactive Base Temperature.
-- Many data, data units, chart and sql bug fixes. 
+- Many data, data units, chart and sql bug fixes.
