@@ -8,17 +8,19 @@
         exit();
     }
 	
-	if (isset($_GET['date']))
+	if ( (isset($_GET['date'])) && isset($_GET['house']) )
 	{
 		$date = get_post($link, 'date');
 		date_default_timezone_set('America/New_York');
+		$house = get_post($link, 'house');
 		
 		/*
 	SELECT tu.date, e.adjusted_load, e.solar, e.used, tu.outdoor_deg_min, tu.outdoor_deg_max, th.hdd, e.water_heater, e.ashp, e.water_pump, e.dryer, e.washer, e.dishwasher, e.stove
-	FROM (SELECT date, temperature_min AS 'outdoor_deg_min', temperature_max AS 'outdoor_deg_max' FROM temperature_daily WHERE device_id = 0) tu 
-		LEFT JOIN (SELECT date, hdd FROM hdd_daily) th ON (th.date = tu.date)
-		LEFT JOIN energy_daily e ON (e.date = tu.date) 
-	WHERE YEAR(tu.date) = 2012
+	FROM (SELECT house_id, date, temperature_min AS 'outdoor_deg_min', temperature_max AS 'outdoor_deg_max' FROM temperature_daily WHERE device_id = 0) tu 
+		LEFT JOIN (SELECT house_id, date, hdd FROM hdd_daily) th ON th.date = tu.date AND th.house_id = tu.house_id
+		LEFT JOIN energy_daily e ON e.date = tu.date AND e.house_id = tu.house_id
+	WHERE tu.house_id = 0
+		AND YEAR(tu.date) = 2012
 		AND MONTH(tu.date) = 3;
 		 * */
 		
@@ -26,10 +28,11 @@
 	    $query .= "tu.outdoor_deg_min, tu.outdoor_deg_max, th.hdd, ";
 	    $query .= "e.water_heater, e.ashp, e.water_pump, e.dryer, e.washer, e.dishwasher, e.stove, ";
 		$query .= "e.used-(e.water_heater+e.ashp+e.water_pump+e.dryer+e.washer+e.dishwasher+e.stove) AS 'All other circuits' ";
-		$query .= "FROM (SELECT date, temperature_min AS 'outdoor_deg_min', temperature_max AS 'outdoor_deg_max' FROM temperature_daily WHERE device_id = 0) tu ";
-		$query .= "LEFT JOIN (SELECT date, hdd FROM hdd_daily) th ON (th.date = tu.date) ";
-		$query .= "LEFT JOIN energy_daily e ON (e.date = tu.date) ";
-		$query .= "WHERE YEAR(tu.date) = " . date_format(date_create($date), 'Y') . " ";
+		$query .= "FROM (SELECT house_id, date, temperature_min AS 'outdoor_deg_min', temperature_max AS 'outdoor_deg_max' FROM temperature_daily WHERE device_id = 0) tu ";
+		$query .= "LEFT JOIN (SELECT house_id, date, hdd FROM hdd_daily) th ON th.date = tu.date AND th.house_id = tu.house_id ";
+		$query .= "LEFT JOIN energy_daily e ON e.date = tu.date AND e.house_id = tu.house_id ";
+		$query .= "WHERE tu.house_id = $house ";
+		$query .= "AND YEAR(tu.date) = " . date_format(date_create($date), 'Y') . " ";
 		$query .= "AND MONTH(tu.date) = " . date_format(date_create($date), 'm');
 		
 		if ($result = mysqli_query($link, $query))

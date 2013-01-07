@@ -1,5 +1,6 @@
 CREATE TABLE energy_hourly
 (
+	house_id		TINYINT			NOT NULL,
 	device_id		TINYINT			NOT NULL,
 	date 			DATETIME		NOT NULL,
 	adjusted_load 	DECIMAL(4),
@@ -16,6 +17,7 @@ CREATE TABLE energy_hourly
 
 CREATE TABLE energy_daily
 (
+	house_id		TINYINT			NOT NULL,
 	device_id		TINYINT			NOT NULL,
 	date			DATE 			NOT NULL,
 	adjusted_load 	DECIMAL(5,3),
@@ -32,6 +34,7 @@ CREATE TABLE energy_daily
 
 CREATE TABLE energy_monthly
 (
+	house_id		TINYINT			NOT NULL,
 	device_id		TINYINT			NOT NULL,
 	date			DATE 			NOT NULL,
 	adjusted_load 	DECIMAL(7,3),
@@ -48,6 +51,7 @@ CREATE TABLE energy_monthly
 
 CREATE TABLE temperature_hourly
 (
+	house_id		TINYINT			NOT NULL,
 	device_id		TINYINT			NOT NULL,
 	date			DATETIME		NOT NULL,
 	temperature		DECIMAL(6,3),
@@ -56,24 +60,28 @@ CREATE TABLE temperature_hourly
 
 CREATE TABLE hdd_hourly
 (
+	house_id		TINYINT			NOT NULL,
 	date			DATETIME		NOT NULL,
 	hdd				DECIMAL(4,3)
 );
 
 CREATE TABLE hdd_daily
 (
+	house_id		TINYINT			NOT NULL,
 	date			DATE		NOT NULL,
 	hdd				DECIMAL(6,3)
 );
 
 CREATE TABLE hdd_monthly
 (
+	house_id		TINYINT			NOT NULL,
 	date			DATE		NOT NULL,
 	hdd 			DECIMAL(7,3)
 );
 
 CREATE TABLE temperature_daily
 (
+	house_id			TINYINT		NOT NULL,
 	device_id			TINYINT		NOT NULL,
 	date 				DATE 		NOT NULL,
 	temperature_min 	DECIMAL(6,3),
@@ -84,12 +92,19 @@ CREATE TABLE temperature_daily
 
 CREATE TABLE monitor_devices
 (
-	device_id			TINYINT		NOT NULL,
-	name 				VARCHAR(32) NOT NULL
+	device_id			TINYINT			NOT NULL,
+	name 				VARCHAR(32) 	NOT NULL
+);
+
+CREATE TABLE houses
+(
+	house_id		TINYINT			NOT NULL,
+	name 			VARCHAR(32) 	NOT NULL
 );
 
 CREATE TABLE limits_hourly
 (
+	house_id			TINYINT		NOT NULL,
 	used_max			DECIMAL(4),
 	solar_min			DECIMAL(4),
 	outdoor_deg_min		DECIMAL(6,3),
@@ -97,10 +112,9 @@ CREATE TABLE limits_hourly
 	hdd_max				DECIMAL(4,3)
 );
 
-INSERT INTO limits_hourly (used_max) VALUES (null);
-
 CREATE TABLE water_monthly
 (
+	house_id		TINYINT			NOT NULL,
 	device_id	TINYINT		NOT NULL,
 	date		DATE		NOT NULL,
 	gallons		DECIMAL(7,1)
@@ -108,6 +122,7 @@ CREATE TABLE water_monthly
 
 CREATE TABLE estimated_monthly
 (
+	house_id	TINYINT		NOT NULL,
 	date		DATE		NOT NULL,
 	solar		DECIMAL(4,0),
 	used		DECIMAL(4,0),

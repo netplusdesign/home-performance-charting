@@ -7,6 +7,13 @@ This app utilizes MySQL, PHP, jQuery, HighCharts and Javascript to view home ene
 
 Working version posted at http://netplusdesign.com/home_performance/monthly.html
 
+Version 3
+Jan 7, 2013
+
+- Updates to data structure to enable multiple house data sets.
+- New Water usage screen. Calculates watts per gallon of hot water and watts per gallon water pumped (if you have a well and record well power usage.)
+- Other sql bug fixes.
+
 Version 2 
 Dec 30, 2012
 

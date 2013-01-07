@@ -30,6 +30,7 @@
 						<option value="16">Generation</option>
 						<option value="17">Usage</option>
 						<option value="18">Heating Degree Days</option>
+						<option value="20">Water Usage</option>
 						<option value="19" selected="selected">Base Temp Analysis</option>
 					</optgroup>
 					<optgroup label="Daily">
@@ -56,7 +57,8 @@
 				</nav>
 				<p>Sample detail:</p>
 				<ul>
-					<li><input type="radio" id="hours" name="period" checked="checked" value="hours" /><label for="hours">Hours</label></li>
+					<li><input type="radio" id="hours" name="period" value="hours" checked="checked" /><label for="hours">Hours</label> <a id="optionButton" href="#" style="display: none;">Options</a></li>
+					<li id="options" style="display: none;"><input type="checkbox" id="seriesOption" name="series" value="series" /><label for="seriesOption">Multi-series</label> <input type="radio" id="pointOption" name="options" value="scatter" checked="checked" /><label for="pointOption">Points</label> <input type="radio" id="lineOption" name="options" value="line" /><label for="lineOption">Lines</label></li>
 					<li><input type="radio" id="days" name="period" value="days" /><label for="days">Days</label></li>
 					<li><input type="radio" id="months" name="period" value="months" /><label for="months">Months</label></li>
 				</ul>
@@ -74,11 +76,11 @@
 				</ul>
 				<p id="reporting"></p>
 			</div>
-			<div id="chart"></div>
+			<div id="chart">Loading...</div>
 			
 			<footer>
 				<p id="instructions">Turn device to toggle between form and chart view.</p>​
-				<p>&copy; netplusdesign 2012</p>
+				<p>&copy; netplusdesign 2012-2013</p>
 			</footer>
 		</div>
 		<script src="js/jquery-1.7.1.min.js"></script>
@@ -110,13 +112,13 @@
 			    }
 			}(document));
 			
-   			var chart = null;
-   			var options;
-			var series = [];
-			var xr = [];
-			var yr = [];
+			var houseId = 0;
+			var chart = null;
 			var currentOption = 'hours';
 			var previousOption = 'hours';
+			var chartOption = new Object();
+			chartOption.type = 'scatter';
+			chartOption.series = 'single';
 			var today;
 			plot();
 			
@@ -150,16 +152,27 @@
    				event.preventDefault();
    			});
    			
-   			$('input:radio').change( function() {
+   			$('input:radio[name=period]').change( function() {
    				currentOption = $('input:radio[name=period]:checked').val();
-   			})
-		
+   			});
+   			
+   			/* Not finished yet
+   			$('a#optionButton').click( function () {
+   				$('li#options').show();
+   			});
+   			$('input:checkbox').change( function() {
+   				chartOption.option = $('input:checkbox').val();
+   			});
+   			$('input:radio[name=options]').change( function() {
+   				chartOption.type = $('input:radio[name=options]:checked').val();
+   			}).prop('disabled', true);
+			*/
 			function plot()
 			{
 				if (chart) chart.showLoading('Loading data...');
 				var base = $('input#base').val();
 				var period = $('input:radio[name=period]:checked').val();
-				var dfile = "get_hdd_ashp.php?base=" + base + "&period=" + period;
+				var dfile = "get_hdd_ashp.php?base=" + base + "&period=" + period + "&house=" + houseId;
 				series = [];
 				xr = [];
 				yr = [];
@@ -199,12 +212,22 @@
                 				point: {
                     				events: {
                         				mouseOver: function() {
-                            				$('p#reporting').html('HDD: '+ Math.round(this.x*1000)/1000 +'<br />kWh: '+ this.y + '<br />Date: ' + this['config'][2]);
+                        					if (this['date'])
+                        					{
+                        						d = Date.parse( this['date'] );
+                        						if (currentOption == 'hours') dt = d.toString('MMM d, yyyy h tt');
+                        						if (currentOption == 'days') dt = d.toString('MMM d, yyyy');
+                        						if (currentOption == 'months') dt = d.toString('MMM, yyyy');
+                        						$('p#reporting').html("HDD: " + Math.round(this.x*1000)/1000 + "<br />kWh: " + this.y + "<br />Temperature: " + this['temp'] + "&deg;F<br />Date: " + dt );
+                            				}
                         				},
                         				click: function() {
-                        					dt = this['config'][2].split(' ');
-                        					tm = (previousOption == 'hours') ? '&time=' + dt[1].split(':')[0] : ''; 
-                            				location.href = 'daily.html?option=8&date=' + dt[0] + tm;
+                        					if (this['date'])
+                        					{
+	                        					dt = this['date'].split(' ');
+	                        					tm = (previousOption == 'hours') ? '&time=' + dt[1].split(':')[0] : ''; 
+	                            				location.href = 'daily.html?option=8&date=' + dt[0] + tm;
+	                            			}
                         				}
                     				}
                 				},
@@ -235,11 +258,11 @@
 					}; // end set options
 					
 					var lines = data.split('\n');  // splits the file into lines
-					series[0] = new Object();
-					series[0].name = 'Data point';
-					series[0].type = 'scatter';
-					series[0].color = 'rgba(223, 83, 83, .5)';
-					series[0].data = [];
+
+					var i = 0;
+					var series = [];
+					var points = [];
+					points[i] = [];
 					
 					$.each(lines, function(lineNo, line) 
 					{ 
@@ -248,45 +271,57 @@
 						// hdd, ashp
 						xr[lineNo] = parseFloat(items[0]);
 						yr[lineNo] = parseFloat(items[1]);
-						series[0].data.push( Array( parseFloat(items[0]), parseFloat(items[1]), items[2] ) );  // why do I need items[2] here?
-						//series[0].data[series[0].data.length-1] = new Object();
-						series[0].data[series[0].data.length-1].name = items[2];
+
+						points[i].push( { temp : items[2], date: items[3], x : parseFloat(items[0]), y : parseFloat(items[1]) } );
+						if ((currentOption == 'hours') && (chartOption.series == 'multiple'))
+						{
+							d = Date.parse( items[3] );
+							nextDay = d.getDate();
+							if ((lineNo > 0) && (nextDay != previousDay ))
+							{
+								// if next day, then increment series
+								series.push( { name : d.toString('yy-MM-dd'), type : chartOption.type, data : points[i] } );
+								points[++i] = [];
+							}
+							previousDay = nextDay;
+						}
+
 					});
+					if ((currentOption != 'hours') || (chartOption != 'multiple'))
+					{
+						series.push( { name : 'Data point', type : 'scatter', color : 'rgba(223, 83, 83, .5)', data : points[i] } );
+					}
 					
 					var lr = linearRegression(yr,xr);
-					$('span#slope').text(Math.round(lr.slope*10000)/10000);
-					$('span#intercept').text(Math.round(lr.intercept*10000)/10000);
-					$('span#r2').text(Math.round(lr.r2*10000)/10000);
+					$('span#slope').text( lr.slope.toFixed(4) );
+					$('span#intercept').text( lr.intercept.toFixed(3) );
+					$('span#r2').text( lr.r2.toFixed(4) );
 					lr.intercept > 0 ? $('span#plus').text(' + ') : $('span#plus').text('');  
-					
-					series[1] = new Object();
-					series[1].name = 'Regression Line';
-					series[1].type = 'line';
-					series[1].color = '#336699';
-					series[1].data = [];
 					
 					start_x = Math.min.apply(Math, xr);
 					start_y = lr.slope * start_x + lr.intercept;
 					end_x = Math.max.apply(Math, xr);
 					end_y = lr.slope * end_x + lr.intercept;
 					
-					series[1].data.push( Array(start_x, start_y) );
-					series[1].data.push( Array(end_x, end_y) );
+					series.push( { name : 'Regression Line', type : 'line', color : '#336699', data : [ Array(start_x, start_y), Array(end_x, end_y) ] } );
 					
-					options.series.push(series[0]);
-					options.series.push(series[1]);
-					
-					if (chart == null) 
-    				{
-						chart = new Highcharts.Chart(options);
-					}
-					else
+					for (i=0; i < series.length; i++)
 					{
-						chart.series[0].setData(series[0].data);
-						chart.series[1].setData(series[1].data);
+						options.series.push(series[i]);
+					}
+
+					chart = new Highcharts.Chart(options);
+					
+					if ((currentOption == 'hours') && (chartOption.series == 'multiple'))
+					{	// hide each series except for first and last. 
+						// Makes it easier to show / hide individual series.
+						// unfortunately also makes it work incredibly slow...
+						for (i=1; i<chart.series.length-1; i++)
+						{
+							chart.series[i].hide();
+						}
 					}
 					chart.hideLoading();
-
 				}); // end get
 				
 			} // end function plot_init();

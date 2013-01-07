@@ -10,35 +10,38 @@
     }
 
 	date_default_timezone_set('America/New_York');
-	if (isset($_GET['date']))
+	if (isset($_GET['date']) && isset($_GET['house']))
 	{
 		$date = get_post($link, 'date');
 		$year = date_format(date_create($date), 'Y');
+		$house = get_post($link, 'house');
 	}
 	else 
 	{
-		$year = '2012'; // default
+		echo "failed"; 
 	}
 
 	/*  
 	SELECT SUM(e.solar), SUM(e.used), SUM(e.adjusted_load), SUM(t.hdd)
 	FROM energy_monthly e
-		LEFT JOIN hdd_monthly t ON e.date = t.date 
-	WHERE YEAR(e.date) = 2012;
+		LEFT JOIN hdd_monthly t ON e.date = t.date AND e.house_id = t.house_id 
+	WHERE e.house_id = 0 
+		AND YEAR(e.date) = 2012;
 	 * */
 	// 0) table totals
-	$query = "SELECT SUM(e.used), SUM(e.solar), SUM(e.adjusted_load), SUM(t.hdd) FROM energy_monthly e LEFT JOIN hdd_monthly t ON e.date = t.date WHERE YEAR(e.date) = $year;";
+	$query = "SELECT SUM(e.used), SUM(e.solar), SUM(e.adjusted_load), SUM(t.hdd) FROM energy_monthly e LEFT JOIN hdd_monthly t ON e.date = t.date AND e.house_id = t.house_id WHERE e.house_id = $house AND YEAR(e.date) = $year;";
 
 	/*
 	SELECT e.date, SUM(e.solar), SUM(e.used), SUM(e.adjusted_load), SUM(t.hdd)
 	FROM energy_monthly e
-		LEFT JOIN hdd_monthly t ON e.date = t.date 
-	WHERE YEAR(e.date) = 2012
+		LEFT JOIN hdd_monthly t ON e.date = t.date AND e.house_id = t.house_id 
+	WHERE e.house_id = 0 
+		AND YEAR(e.date) = 2012
 	GROUP BY MONTH(e.date)
 	ORDER BY date;
 	 * */
 	// 1) table data
-	$query .= "SELECT e.date, SUM(e.used), SUM(e.solar), SUM(e.adjusted_load), SUM(t.hdd) FROM energy_monthly e LEFT JOIN hdd_monthly t ON e.date = t.date WHERE YEAR(e.date) = $year GROUP BY MONTH(e.date) ORDER BY e.date;";
+	$query .= "SELECT e.date, SUM(e.used), SUM(e.solar), SUM(e.adjusted_load), SUM(t.hdd) FROM energy_monthly e LEFT JOIN hdd_monthly t ON e.date = t.date AND e.house_id = t.house_id WHERE e.house_id = $house AND YEAR(e.date) = $year GROUP BY MONTH(e.date) ORDER BY e.date;";
 		
 	$output = array(
 		"columns" => array( "Used", "Solar", "Net", "HDD" ),

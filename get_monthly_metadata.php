@@ -8,10 +8,19 @@
         exit();
     }
 	
+	if (isset($_GET['house']))
+	{
+		$house = get_post($link, 'house');
+	}
+	else 
+	{
+		echo "failed"; 
+	}
+	
 	// 0) list of years
-	$query = "SELECT YEAR(date) from energy_monthly GROUP BY YEAR(date) ORDER BY date;";
+	$query = "SELECT YEAR(date) FROM energy_monthly WHERE house_id = $house GROUP BY YEAR(date) ORDER BY date;";
 	// 0) as of date
-	$query .= "SELECT date from energy_hourly ORDER BY date DESC LIMIT 1;";
+	$query .= "SELECT date FROM energy_hourly WHERE house_id = $house ORDER BY date DESC LIMIT 1;";
 
 	$output = array(
 		"years" => array()
@@ -52,4 +61,11 @@
 	mysqli_close($link);
 
 	echo json_encode( $output );
+	
+	function get_post($link, $var)
+	{
+		$temp = mysqli_real_escape_string($link, $_GET[$var]);
+		if ($temp == '') $temp = 'NULL';
+		return $temp;
+	}
 ?>

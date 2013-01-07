@@ -10,27 +10,29 @@
     }
 
 	date_default_timezone_set('America/New_York');
-	if (isset($_GET['date']))
+	if (isset($_GET['date']) && isset($_GET['house']))
 	{
 		$date = get_post($link, 'date');
 		$year = date_format(date_create($date), 'Y');
+		$house = get_post($link, 'house');
 	}
 	else 
 	{
-		$year = '2012'; // default
+		echo "failed"; 
 	}
 
 	// 0) total used
-	$query = "SELECT SUM(used) FROM energy_monthly;"; 
+	$query = "SELECT SUM(used) FROM energy_monthly WHERE house_id = $house;"; 
 	// 1) list by circuit, 2012 query must exclude 1/1 through 3/15
 	
 	/*
-	SELECT SUM(used), SUM(water_heater), SUM(ashp), SUM(water_pump), SUM(dryer), SUM(washer), SUM(dishwasher), SUM(stove), SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) AS 'Other' 
-	FROM energy_monthly 
-	WHERE YEAR(date) = 2012
-		AND device_id = 5;
+SELECT SUM(used), SUM(water_heater), SUM(ashp), SUM(water_pump), SUM(dryer), SUM(washer), SUM(dishwasher), SUM(stove), SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) AS 'Other' 
+FROM energy_monthly 
+WHERE house_id = 0 
+	AND YEAR(date) = 2012
+	AND device_id = 5;
 	 * */
-	$query .= "SELECT SUM(used), SUM(water_heater), SUM(ashp), SUM(water_pump), SUM(dryer), SUM(washer), SUM(dishwasher), SUM(stove), SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE YEAR(date) = $year AND device_id = 5;";
+	$query .= "SELECT SUM(used), SUM(water_heater), SUM(ashp), SUM(water_pump), SUM(dryer), SUM(washer), SUM(dishwasher), SUM(stove), SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5;";
 
 	// break down values monthly
 	$circuit = null;
@@ -52,18 +54,21 @@
 		/*
 		SELECT SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) 
 		FROM energy_monthly 
-		WHERE YEAR(date) = 2012 
+		WHERE house_id = 0 
+			AND YEAR(date) = 2012 
 			AND device_id = 5;
 		 * */
-		$query .= "SELECT SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE YEAR(date) = $year AND device_id = 5;";
+		$query .= "SELECT SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5;";
 		/*
 		SELECT date, SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) 
 		FROM energy_monthly 
-		WHERE YEAR(date) = 2012 
-			AND device_id = 5 GROUP BY MONTH(date);
+		WHERE house_id = 0
+			AND YEAR(date) = 2012 
+			AND device_id = 5 
+		GROUP BY MONTH(date);
 		 * */
 		// 4) circuit by month
-		$query .= "SELECT date, SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE YEAR(date) = $year AND device_id = 5 GROUP BY MONTH(date);";
+		$query .= "SELECT date, SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5 GROUP BY MONTH(date);";
 	}
 	else if ($circuit == 'total') 
 	{
@@ -73,19 +78,21 @@
 		/*
 		SELECT SUM(en.used), SUM(es.used) 
 		FROM energy_monthly en 
-			LEFT JOIN estimated_monthly es ON en.date = es.date  
-		WHERE YEAR(en.date) = 2012;
+			LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id  
+		WHERE en.house_id = 0
+			AND YEAR(en.date) = 2012;
 		 * */
-		$query .= "SELECT SUM(en.used), SUM(es.used) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date WHERE YEAR(en.date) = $year;";
+		$query .= "SELECT SUM(en.used), SUM(es.used) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id WHERE en.house_id = $house AND YEAR(en.date) = $year;";
 		/*
 		SELECT en.date, SUM(en.used), SUM(es.used) 
 		FROM energy_monthly en 
-			LEFT JOIN estimated_monthly es ON en.date = es.date 
-		WHERE YEAR(en.date) = 2012 
+			LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id 
+		WHERE en.house_id = 0
+			AND YEAR(en.date) = 2012 
 		GROUP BY MONTH(en.date) 
 		ORDER BY en.date;
 		 * */
-		$query .= "SELECT en.date, SUM(en.used), SUM(es.used) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date WHERE YEAR(en.date) = $year GROUP BY MONTH(en.date) ORDER BY en.date";
+		$query .= "SELECT en.date, SUM(en.used), SUM(es.used) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id WHERE en.house_id = $house AND YEAR(en.date) = $year GROUP BY MONTH(en.date) ORDER BY en.date";
 	}
 	else
 	{
@@ -93,24 +100,25 @@
 		{
 			// 2) get data to calculate projected values --- the reason for all the dummy queries above
 			/* 
-			SELECT SUM((65.0 - temperature) * 1 / 24) 
-			FROM temperature_hourly 
-			WHERE device_id = 0 
-				AND YEAR(date) = 2012 
-				AND temperature <= 65.0 
-				GROUP BY MONTH(date);
+			SELECT SUM(hdd), date
+			FROM (SELECT IF( ((50 - temperature) * 1 / 24) > 0, ((50 - temperature) * 1 / 24), 0) AS 'hdd', date 
+					FROM temperature_hourly 
+					WHERE house_id = 0 
+						AND device_id = 0 
+						AND YEAR(date) = 2012) t
+			GROUP BY MONTH(date);
 			 * */
-			$base = 58.0;
-			$query .= "SELECT SUM(($base - temperature) * 1 / 24) FROM temperature_hourly WHERE device_id = 0 AND YEAR(date) = $year AND temperature <= $base GROUP BY MONTH(date);";
+			$base = 50.0;
+			$query .= "SELECT SUM(hdd) FROM (SELECT IF( (($base - temperature) * 1 / 24) > 0, (($base - temperature) * 1 / 24), 0) AS 'hdd', date FROM temperature_hourly WHERE house_id = $house AND device_id = 0 AND YEAR(date) = $year) t GROUP BY MONTH(date);";
 		}
 		else 
 		{
 			$query .= "SELECT 1+1;";
 		}
 		// 3) circuit total
-		$query .= "SELECT SUM($circuit) FROM energy_monthly WHERE YEAR(date) = $year AND device_id = 5;";
+		$query .= "SELECT SUM($circuit) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5;";
 		// 4) circuit by month
-		$query .= "SELECT date, $circuit FROM energy_monthly WHERE YEAR(date) = $year AND device_id = 5 GROUP BY MONTH(date);";
+		$query .= "SELECT date, $circuit FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5 GROUP BY MONTH(date);";
 	}
 	
 	$output = array(

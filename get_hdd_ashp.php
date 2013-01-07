@@ -8,57 +8,69 @@
         exit();
     }
 	
-	if (isset($_GET['base']) && isset($_GET['period']))
+	if (isset($_GET['base']) && isset($_GET['period']) && isset($_GET['house']))
 	{
 		$base = get_post($link, 'base');
 		$period = get_post($link, 'period');
+		$house = get_post($link, 'house');
 	} 
 	else 
 	{
-		// default
-		$base = 65.0;
-		$period = "hours";
+		echo "failed"; 
 	}
 	
 	/*
-	SELECT (54.0 - t.temperature) * 1 / 24 AS 'hdd', e.ashp/1000.0, e.date
-	FROM energy_hourly e, (SELECT date, temperature FROM temperature_hourly WHERE device_id = 0) t
-	WHERE e.date = t.date
+	SELECT (54.0 - t.temperature) * 1 / 24 AS 'hdd', e.ashp/1000.0, t.temperature, e.date
+	FROM energy_hourly e, (SELECT house_id, date, temperature FROM temperature_hourly WHERE device_id = 0) t
+	WHERE e.house_id = 0
+	AND e.house_id = t.house_id
+	AND e.date = t.date
 	AND t.temperature < 54
 	AND e.ashp > 0;
 	 * */
 	// hourly
-	$query['hours'] = "SELECT ($base - t.temperature) * (1 / 24) AS 'hdd', e.ashp/1000.0, e.date "; 
-	$query['hours'] .= "FROM energy_hourly e, (SELECT date, temperature FROM temperature_hourly WHERE device_id = 0) t ";
-	$query['hours'] .= "WHERE e.date = t.date ";
+	$query['hours'] = "SELECT ($base - t.temperature) * (1 / 24) AS 'hdd', e.ashp/1000.0, t.temperature, e.date "; 
+	$query['hours'] .= "FROM energy_hourly e, (SELECT house_id, date, temperature FROM temperature_hourly WHERE device_id = 0) t ";
+	$query['hours'] .= "WHERE e.house_id = $house ";
+	$query['hours'] .= "AND e.house_id = t.house_id ";
+	$query['hours'] .= "AND e.date = t.date ";
 	$query['hours'] .= "AND t.temperature < $base ";
 	$query['hours'] .= "AND e.ashp > 0";
-	
 	/*
-	SELECT e.date, SUM(e.ashp)/1000.0, SUM(t.hdd) 
-	FROM (SELECT date, IF(((68 - temperature) * 1 / 24) > 0, (68 - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e
-	WHERE t.date = e.date
+	SELECT SUM(t.hdd), SUM(e.ashp)/1000.0, t.temperature, e.date 
+	FROM (SELECT house_id, date, temperature, IF(((68 - temperature) * 1 / 24) > 0, (68 - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e
+	WHERE e.house_id = 0
+		AND t.house_id = e.house_id
+		AND t.date = e.date
 		AND CAST(e.date AS DATE) = ANY (SELECT e.date FROM energy_daily e, temperature_daily t WHERE t.device_id = 0 AND e.date = t.date AND t.temperature_min <= 68 AND e.ashp > 0)
 	GROUP BY CAST(t.date AS DATE);
 	 * */
 	// daily
-	$query['days'] = "SELECT SUM(t.hdd), SUM(e.ashp)/1000.0, e.date "; 
-	$query['days'] .= "FROM (SELECT date, IF((($base - temperature) * 1 / 24) > 0, ($base - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e ";
-	$query['days'] .= "WHERE t.date = e.date ";
+	$query['days'] = "SELECT SUM(t.hdd), SUM(e.ashp)/1000.0, t.temperature, e.date "; 
+	$query['days'] .= "FROM (SELECT house_id, date, temperature, IF((($base - temperature) * 1 / 24) > 0, ($base - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e ";
+	$query['days'] .= "WHERE e.house_id = $house ";
+	$query['days'] .= "AND t.house_id = e.house_id ";
+	$query['days'] .= "AND t.date = e.date ";
 	$query['days'] .= "AND CAST(e.date AS DATE) = ANY (SELECT e.date FROM energy_daily e, temperature_daily t WHERE t.device_id = 0 AND e.date = t.date AND t.temperature_min <= $base AND e.ashp > 0) ";
 	$query['days'] .= "GROUP BY CAST(t.date AS DATE)";
 	
 	/*
-	SELECT e.date, SUM(e.ashp)/1000.0, SUM(t.hdd) 
-	FROM (SELECT date, IF(((68 - temperature) * 1 / 24) > 0, (68 - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e
-	WHERE t.date = e.date
-	AND e.date > DATE('2012-03-15') AND ( MONTH(e.date) < 6 OR MONTH(e.date) > 8 )
+	SELECT SUM(t.hdd), SUM(e.ashp)/1000.0, t.temperature, e.date 
+	FROM (SELECT house_id, date, temperature, IF(((68 - temperature) * 1 / 24) > 0, (68 - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e
+	WHERE e.house_id = 0
+		AND t.house_id = e.house_id
+		AND t.date = e.date
+		AND e.date > DATE('2012-03-15') 
+		AND ( MONTH(e.date) < 6 
+		OR MONTH(e.date) > 8 )
 	GROUP BY MONTH(t.date);
 	*/
 	// monthly
-	$query['months'] = "SELECT SUM(t.hdd), SUM(e.ashp)/1000.0, e.date "; 
-	$query['months'] .= "FROM (SELECT date, IF((($base - temperature) * 1 / 24) > 0, ($base - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e ";
-	$query['months'] .= "WHERE t.date = e.date ";
+	$query['months'] = "SELECT SUM(t.hdd), SUM(e.ashp)/1000.0, t.temperature, e.date "; 
+	$query['months'] .= "FROM (SELECT house_id, date, temperature, IF((($base - temperature) * 1 / 24) > 0, ($base - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e ";
+	$query['months'] .= "WHERE e.house_id = $house ";
+	$query['months'] .= "AND t.house_id = e.house_id ";
+	$query['months'] .= "AND t.date = e.date ";
 	$query['months'] .= "AND e.date > DATE('2012-03-15') ";
 	$query['months'] .= "AND (MONTH(e.date) < 6 ";
 	$query['months'] .= "OR MONTH(e.date) > 8) ";
@@ -68,7 +80,7 @@
 	{ 
 		while ($row = mysqli_fetch_row($result)) 
 		{
-			echo $row[0] . "," . $row[1] . "," . $row[2] . "\r\n";
+			echo $row[0] . "," . $row[1] . "," . $row[2] . "," . $row[3] . "\r\n";
 		}
 		mysqli_free_result($result);
 	}

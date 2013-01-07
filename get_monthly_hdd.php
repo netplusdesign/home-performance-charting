@@ -10,58 +10,72 @@
     }
 
 	date_default_timezone_set('America/New_York');
-	if (isset($_GET['date']))
+	if (isset($_GET['date']) && isset($_GET['house']))
 	{
 		$date = get_post($link, 'date');
 		$year = date_format(date_create($date), 'Y');
+		$house = get_post($link, 'house');
 	}
 	else 
 	{
-		$year = '2012'; // default
+		echo "failed"; 
 	}
 
 	/*
-	SELECT t.hdd, e.ashp
-	FROM (SELECT date, SUM(hdd) AS 'hdd' FROM hdd_monthly WHERE YEAR(date) = 2012) t,
-		 (SELECT date, SUM(ashp) AS 'ashp' FROM energy_monthly WHERE YEAR(date) = 2012 AND date < DATE('2012-05-21') OR date > DATE('2012-09-21')) e;
+SELECT t.hdd, e.ashp
+FROM (SELECT SUM(hdd) AS 'hdd' FROM hdd_daily WHERE house_id = 0 AND YEAR(date) = 2012 AND date > DATE('2012-03-15')) t,
+	 (SELECT SUM(ashp) AS 'ashp' FROM energy_monthly WHERE house_id = 0 AND YEAR(date) = 2012 AND (date < DATE('2012-05-21') OR date > DATE('2012-09-21'))) e;
 	 * */
 	// 0) returns total HDD and total kWh used in heating season
-	$query .= "SELECT t.hdd, e.ashp FROM (SELECT date, SUM(hdd) AS 'hdd' FROM hdd_monthly WHERE YEAR(date) = $year) t, (SELECT date, SUM(ashp) AS 'ashp' FROM energy_monthly WHERE YEAR(date) = $year AND date < DATE('$year-05-21') OR date > DATE('$year-09-21')) e;";
+	if ($year == 2012)
+	{
+		$query = "SELECT t.hdd, e.ashp FROM (SELECT SUM(hdd) AS 'hdd' FROM hdd_daily WHERE house_id = $house AND YEAR(date) = $year AND date > DATE('2012-03-15')) t, (SELECT SUM(ashp) AS 'ashp' FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND (date < DATE('$year-05-21') OR date > DATE('$year-09-21'))) e;";
+	}
+	else 
+	{
+		$query = "SELECT t.hdd, e.ashp FROM (SELECT SUM(hdd) AS 'hdd' FROM hdd_monthly WHERE house_id = $house AND YEAR(date) = $year) t, (SELECT SUM(ashp) AS 'ashp' FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND (date < DATE('$year-05-21') OR date > DATE('$year-09-21'))) e;";	
+	}
 	// 1 and 2) coldest temp and date, coldest day hdd and date
 	/*
-	 * 1) SELECT temperature, date FROM temperature_hourly where temperature = (SELECT MIN(temperature) FROM temperature_hourly WHERE YEAR(date) = 2012);
-	 * 2) SELECT hdd, date FROM hdd_daily WHERE hdd = (SELECT MAX(hdd) FROM hdd_daily WHERE YEAR(date) = 2012);
+	 * 1) SELECT temperature, date FROM temperature_hourly WHERE temperature = (SELECT MIN(temperature) FROM temperature_hourly WHERE YEAR(date) = 2012) AND house_id = 0;
+	 * 2) SELECT hdd, date FROM hdd_daily WHERE hdd = (SELECT MAX(hdd) FROM hdd_daily WHERE YEAR(date) = 2012) AND house_id = 0; 
 	 * */
-	$query .= "SELECT temperature, date FROM temperature_hourly where temperature = (SELECT MIN(temperature) FROM temperature_hourly WHERE YEAR(date) = $year);";
-	$query .= "SELECT hdd, date FROM hdd_daily WHERE hdd = (SELECT MAX(hdd) FROM hdd_daily WHERE YEAR(date) = $year);";
+	$query .= "SELECT temperature, date FROM temperature_hourly WHERE temperature = (SELECT MIN(temperature) FROM temperature_hourly WHERE YEAR(date) = $year) AND house_id = $house;";
+	$query .= "SELECT hdd, date FROM hdd_daily WHERE hdd = (SELECT MAX(hdd) FROM hdd_daily WHERE YEAR(date) = $year) AND house_id = $house;";
 
 	/* 
 	SELECT SUM(td.hdd), SUM(es.hdd) 
-	FROM (SELECT date, hdd FROM hdd_monthly WHERE YEAR(date) = 2012 AND MONTH(date) < 6 OR MONTH(date) > 8) td, 
-		 (SELECT date, hdd FROM estimated_monthly WHERE YEAR(date) = 2012 AND MONTH(date) < 6 OR MONTH(date) > 8) es 
-	WHERE td.date = es.date;
+	FROM (SELECT house_id, date, hdd FROM hdd_monthly WHERE YEAR(date) = 2012 AND MONTH(date) < 6 OR MONTH(date) > 8) td, 
+		 (SELECT house_id, date, hdd FROM estimated_monthly WHERE YEAR(date) = 2012 AND MONTH(date) < 6 OR MONTH(date) > 8) es 
+	WHERE td.house_id = 0 
+		AND td.house_id = es.house_id 
+		AND td.date = es.date;
 	 * */
 	// 3) total hdd and total estimated hdd during heating season
-	$query .= "SELECT SUM(td.hdd), SUM(es.hdd) FROM (SELECT date, hdd FROM hdd_monthly WHERE YEAR(date) = $year AND MONTH(date) < 6 OR MONTH(date) > 8) td, (SELECT date, hdd FROM estimated_monthly WHERE YEAR(date) = $year AND MONTH(date) < 6 OR MONTH(date) > 8) es WHERE td.date = es.date;";
+	$query .= "SELECT SUM(td.hdd), SUM(es.hdd) FROM (SELECT house_id, date, hdd FROM hdd_monthly WHERE YEAR(date) = $year AND MONTH(date) < 6 OR MONTH(date) > 8) td, (SELECT house_id, date, hdd FROM estimated_monthly WHERE YEAR(date) = $year AND MONTH(date) < 6 OR MONTH(date) > 8) es WHERE td.house_id = $house AND td.house_id = es.house_id AND td.date = es.date;";
 
 	/*
 	SELECT SUM(td.hdd), SUM(es.hdd) 
 	FROM hdd_monthly td, estimated_monthly es 
-	WHERE YEAR(es.date) = 2012
-		AND td.date = es.date;
+	WHERE td.house_id = 0
+		AND td.house_id = es.house_id
+		AND td.date = es.date
+		AND YEAR(es.date) = 2012;
 	 * */
 	// 4) total hdd and total estimated hdd
-	$query .= "SELECT SUM(td.hdd), SUM(es.hdd) FROM hdd_monthly td, estimated_monthly es WHERE td.date = es.date AND YEAR(es.date) = $year;";
+	$query .= "SELECT SUM(td.hdd), SUM(es.hdd) FROM hdd_monthly td, estimated_monthly es WHERE td.house_id = $house AND td.house_id = es.house_id AND td.date = es.date AND YEAR(es.date) = $year;";
 	
 	/*
-	SELECT es.date, td.hdd, es.hdd
-	FROM hdd_monthly td, estimated_monthly es
-	WHERE YEAR(td.date) = 2012
-		AND td.date = es.date
-	ORDER BY td.date;
+SELECT es.date, td.hdd, es.hdd
+FROM hdd_monthly td, estimated_monthly es
+WHERE td.house_id = 0
+	AND td.house_id = es.house_id
+	AND td.date = es.date
+	AND YEAR(td.date) = 2012
+ORDER BY td.date;
 	 * */
 	// 5) list by month
-	$query .= "SELECT es.date, td.hdd, es.hdd FROM hdd_monthly td, estimated_monthly es WHERE YEAR(td.date) = $year AND td.date = es.date ORDER BY td.date;";
+	$query .= "SELECT es.date, td.hdd, es.hdd FROM hdd_monthly td, estimated_monthly es WHERE td.house_id = $house AND td.house_id = es.house_id AND td.date = es.date AND YEAR(td.date) = $year ORDER BY td.date;";
 
 	$output = array(
 		"coldest_hour" => array(),

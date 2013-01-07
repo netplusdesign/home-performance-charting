@@ -10,39 +10,41 @@
     }
 
 	date_default_timezone_set('America/New_York');
-	if (isset($_GET['date']))
+	if (isset($_GET['date']) && isset($_GET['house']))
 	{
 		$date = get_post($link, 'date');
 		$year = date_format(date_create($date), 'Y');
+		$house = get_post($link, 'house');
 	}
 	else 
 	{
-		$year = '2012'; // default
+		echo "failed"; 
 	}
 
 	// 0) total generated  
-	$query .= "SELECT SUM(solar) FROM energy_monthly;"; 
+	$query .= "SELECT SUM(solar) FROM energy_monthly WHERE house_id = $house;"; 
 	// 1 and 2) max solar hour and day
-	$query .= "SELECT solar, date FROM energy_hourly WHERE solar = (SELECT MIN(solar) FROM energy_hourly);";
-	$query .= "SELECT solar, date FROM energy_daily WHERE solar = (SELECT MIN(solar) FROM energy_daily);";
+	$query .= "SELECT solar, date FROM energy_hourly WHERE solar = (SELECT MIN(solar) FROM energy_hourly) AND house_id = 0;";
+	$query .= "SELECT solar, date FROM energy_daily WHERE solar = (SELECT MIN(solar) FROM energy_daily) AND house_id = 0;";
 	// 3 and 4) list by month
 	/*
 	SELECT SUM(en.solar), SUM(es.solar) 
 	FROM energy_monthly en 
-		LEFT JOIN estimated_monthly es ON en.date = es.date 
-	WHERE YEAR(en.date) = 2012
-	ORDER BY en.date;
+		LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id 
+	WHERE en.house_id = 0
+		AND YEAR(en.date) = 2012;
 	 * */
-	$query .= "SELECT SUM(en.solar), SUM(es.solar) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date WHERE YEAR(en.date) = $year ORDER BY en.date;";
+	$query .= "SELECT SUM(en.solar), SUM(es.solar) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id WHERE en.house_id = $house AND YEAR(en.date) = $year;";
 	/*
-	SELECT en.date, SUM(en.solar), SUM(es.solar) 
-	FROM energy_monthly en 
-		LEFT JOIN estimated_monthly es ON en.date = es.date 
-	WHERE YEAR(en.date) = 2012
-	GROUP BY MONTH(en.date)
-	ORDER BY en.date;
+SELECT en.date, SUM(en.solar), SUM(es.solar) 
+FROM energy_monthly en 
+	LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id 
+WHERE en.house_id = 0
+	AND YEAR(en.date) = 2012
+GROUP BY MONTH(en.date)
+ORDER BY en.date;
 	 * */
-	$query .= "SELECT en.date, SUM(en.solar), SUM(es.solar) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date WHERE YEAR(en.date) = $year GROUP BY MONTH(en.date) ORDER BY en.date";
+	$query .= "SELECT en.date, SUM(en.solar), SUM(es.solar) FROM energy_monthly en LEFT JOIN estimated_monthly es ON en.date = es.date AND en.house_id = es.house_id WHERE en.house_id = $house AND YEAR(en.date) = $year GROUP BY MONTH(en.date) ORDER BY en.date;";
 
 	$output = array(
 		"max_solar_hour" => array(),
