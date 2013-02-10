@@ -22,7 +22,7 @@
 	}
 
 	// 0) total generated  
-	$query .= "SELECT SUM(solar) FROM energy_monthly WHERE house_id = $house;"; 
+	$query .= "SELECT SUM(solar) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year;"; 
 	// 1 and 2) max solar hour and day
 	$query .= "SELECT solar, date FROM energy_hourly WHERE solar = (SELECT MIN(solar) FROM energy_hourly) AND house_id = 0;";
 	$query .= "SELECT solar, date FROM energy_daily WHERE solar = (SELECT MIN(solar) FROM energy_daily) AND house_id = 0;";

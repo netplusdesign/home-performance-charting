@@ -30,24 +30,26 @@ $(document).ready(function()
 	var today, asofDate;
 	getMetaData();
 	
-	// set main navigation hadler
-	$("select#dice").change(function(event)
+	// set main navigation handler
+	$("select#slice,select#dice").change(function(event)
 	{
-		params = "?date=" + today.toString('yyyy-MM-dd') + "&option=" + this.value;
-		if ( this.value == 19 ) 
+		var yr = parseInt( $("select#slice").val() );
+		today.set({ 'year' : yr });
+		currentOption = $("select#dice").val();
+		var params = "?date=" + today.toString('yyyy-MM-dd') + "&option=" + currentOption;
+		if ( currentOption == 19 ) 
 		{
 			// goto Interactive Bae Temp page
 			window.location.assign( "interactive_base_temp.html" + params );
 		}
-		else if ( this.value  < 15 )
+		else if ( currentOption  < 15 )
 		{
    			// goto Daily page
    			window.location.assign( "daily.html" + params );	
 		}
 		else
 		{
-			showView( parseInt(this.value) );
-			currentOption = this.value;
+			showView( parseInt(currentOption) );
 		}
 	});
 	// set currentOption
@@ -150,12 +152,14 @@ $(document).ready(function()
 		var days = asofDate.getDayOfYear() + 1;
 		// console.log( "days = " + Math.floor(days) ); 
 		$('div#data').append( makeTags('table', 1) );
-		$('div#data table').append( "<tr><th></th><th class='lable usage'>Usage</th><th class='lable solar'>Solar</th><th class='lable net'>Net</th><th>Avg.<br/>daily<br/>usage</th><th class='lable hdd'>HDD</th></tr>" );
+		$('div#data table').append( "<tr><th></th><th class='lable usage'>Usage</th><th class='lable solar'>Solar</th><th class='lable net'>Net</th><th>Avg.<br/>daily<br/>usage</th><th class='lable hdd'>HDD&sup1;</th></tr>" );
 		$('div#data table').append( "<tr><th class='name'>Total</th><th class='total'>" + Math.round(data['totals'][0]) + "</th><th class='total'>" + Math.round(data['totals'][1]) + "</th><th class='total'>" + Math.round(data['totals'][2]) + "</th><th>" + ( data['totals'][0] / days ).toFixed(1) + "</th><th class='hdd'>" + Math.round(data['totals'][3]) + "</th></tr>" );
 		for ( i=0; i<data['months'].length; i++ )
 		{
 			$('div#data table').append( "<tr><td class='month name'>" + addDateAnchor( Date.parse( data['months'][i][0] ) ) + "</td><td class='usage'>" + Math.round(data['months'][i][1]) + "</td><td class='solar'>" + Math.round(data['months'][i][2]) + "</td><td class='net'>" + Math.round( data['months'][i][3] ) + "</td><td>" + ( data['months'][i][1] / Date.parse( data['months'][i][0] ).getDaysInMonth() ).toFixed(1) + "</td><td class='hdd'>" + Math.round(data['months'][i][4]) + "</td></tr>" );
 		}
+		$('div#data').append("<p class='notes'>All power values in kWh.</p>");
+		$('div#data').append("<p class='notes'>1. Base 65&deg;F</p>");
 	}
 	function setupChartTabs( tab1, tab2 )
 	{
@@ -389,10 +393,12 @@ $(document).ready(function()
 	function showGenerationTable( data )
 	{
 		var days = asofDate.getDayOfYear() + 1;
-		$('div#data').append( "<p><b>Since Jan 2012</b> : " + Math.round(data['total_generated']) + "</p>" );
+		$('div#data').append( "<p><b>Since Jan 1</b> : " + Math.round(data['total_generated']) + "</p>" );
 		$('div#data').append( "<p><b>kWh / day</b> : " + ( data['total_generated'] / days ).toFixed(1) + "</p>" );
-		$('div#data').append( "<p><b>Max Wh</b> : " + data['max_solar_hour'][0] + ", Date: " + Date.parse( data['max_solar_hour'][1] ).toString('M/d htt') + "</p>" );
-		$('div#data').append( "<p><b>Max kWh day</b> : " + Number( data['max_solar_day'][0] ).toFixed(1) + ", Date: " + Date.parse( data['max_solar_day'][1] ).toString('M/d') + "</p>" );
+		var d = Date.parse(data['max_solar_hour'][1]);
+		$('div#data').append( "<p><b>Max Wh</b> : " + data['max_solar_hour'][0] + ", Date: <a href='daily.html?option=2&date=" + d.toString('yyyy-MM-dd') + "&time=" + d.toString('HH') + "'>" + d.toString('M/d/yyyy htt') + "</a></p>" ); // add link in future
+		d = Date.parse(data['max_solar_day'][1]);
+		$('div#data').append( "<p><b>Max kWh day</b> : " + Number( data['max_solar_day'][0] ).toFixed(1) + ", Date: <a href='daily.html?option=2&date=" + d.toString('yyyy-MM-dd') + "'>" + d.toString('M/d/yyyy') + "</a></p>" ); // add link in future  
 		$('div#data').append( makeTags('table', 1) );
 		$('div#data table').append( "<tr><th></th><th class='lable usage'>Actual</th><th class='lable budget'>Estimated</th><th>Diff(%)<span class='net'>Net</span></th></tr>" );
 		var percChange = Math.round( (((data['totals'][0])-data['totals'][1]) / data['totals'][1] ) * 100 );
@@ -404,6 +410,7 @@ $(document).ready(function()
 			style = (percChange >= 0) ? "positive" : "negative";
 			$('div#data table').append( "<tr><td class='month name'>" + addDateAnchor( Date.parse( data['months'][i][0] ), 2 ) + "</td><td class='usage'>" + Math.round(data['months'][i][1]) + "</td><td class='budget'>" + Math.round(data['months'][i][2]) + "</td><td class='" + style + "'>" + percChange + "<span class='net'>" + Math.round(data['months'][i][1]-data['months'][i][2]) + "</span></td></tr>" );
 		}
+		$('div#data').append("<p class='notes'>All power values in kWh.</p>");
 	}
 	function showGenerationYTD( data )
 	{
@@ -517,8 +524,8 @@ $(document).ready(function()
 	}
 	function showUsageTable( data )
 	{
-		var days = asofDate.getDayOfYear() + 1;
-		$('div#data').append( "<p><b>Since Jan 2012</b> : " + Math.round(data['total_used']) + "</p>" );
+		var days = asofDate.getDayOfYear() + 1; 
+		$('div#data').append( "<p><b>Since Jan 1</b> : " + Math.round(data['total_used']) + "</p>" );
 		$('div#data').append( "<p><b>kWh / day</b> : " + (data['total_used'] / days).toFixed(1) + "</p>" );
 		$('div#data').append( makeTags('table', 1) );
 		$('div#data table').append( "<tr><th></th><th class='lable'>YTD&sup1;</th><th class='lable'>% of total</th><th></th></tr>" );
@@ -538,6 +545,7 @@ $(document).ready(function()
 		var h1 = (data['circuit'] == 'ashp') ? "Projected&sup2;" : "Budgeted";
 		var h2 = ((data['circuit'] == 'total') || (data['circuit'] == 'ashp')) ? "Diff(%)" : "";
 		$('div#data table').append( "<tr class='monthly'><th class='name'>" + data.meta[ data['circuit'] ]['name'] + "</th><th class='lable usage'>Actual</th><th class='lable budget dh'>" + h1 + "</th><th class='dh'>" + h2 + "<span class='net'>Net</span></th></tr>" );
+		var title = "";
 		if ( data['circuit'] == "total" )
 		{
 			var percChange = (( data['totals'][1] - data['totals'][0]) / data['totals'][1] ) * 100;
@@ -548,13 +556,14 @@ $(document).ready(function()
 		}
 		else if ( data['circuit'] == 'ashp' )
 		{
-			// calculate projected heat energy value, in this case, based on a base temperature of 58.
+			// calculate projected heat energy value, in this case, based on a base temperature of 50.
 			var projected = getProjectedHeatEnergy( data['hdd'] ); 
 			var percChange = (( projected - data['totals'][0] ) / data['totals'][0] ) * 100;
 			style = (percChange >= 0) ? "positive" : "negative";
 			column.push( parseFloat(data['totals'][0]).toFixed(1) ); 
 			column.push( projected.toFixed(1) );
 			column.push( percChange.toFixed() );
+			title = "title='HDD base 50&deg;F = " + data['hdd'] + "'";
 		}
 		else
 		{
@@ -562,9 +571,10 @@ $(document).ready(function()
 			column.push( "0" );
 			column.push( "0" );
 		}
-		$('div#data table').append( "<tr><th class='name'>YTD</th><th class='total'>" + column.shift() + "</th><th class='total dh'>" + column.shift() + "</th><th class='" + style + " dh'>" + column.shift() + "</th></tr>" );
+		$('div#data table').append( "<tr><th class='name'>YTD</th><th class='total'>" + column.shift() + "</th><th class='total dh' " + title + ">" + column.shift() + "</th><th class='" + style + " dh'>" + column.shift() + "</th></tr>" );
 		for ( i=0; i<data['months'].length; i++ )
 		{
+			var title = "";
 			column.push( addDateAnchor( Date.parse( data['months'][i][0] ), data.meta[ data['circuit'] ]['index'] ) ); // month name
 			if ( data['circuit'] == "total" )
 			{
@@ -584,6 +594,7 @@ $(document).ready(function()
 				column.push( projected.toFixed(3) ); 
 				column.push( percChange.toFixed() );
 				column.push( projected - data['months'][i][1] ); // net
+				title = "title='HDD base 50&deg;F = " + data['hdds'][i] + "'";
 			}
 			else
 			{
@@ -592,18 +603,18 @@ $(document).ready(function()
 				column.push( "0" );
 				column.push( "0" );		
 			}
-			$('div#data table').append( "<tr><td class='month name'>" + column.shift() + "</td><td class='usage'>" + column.shift() + "</td><td class='budget dh'>" + column.shift() + "</td><td class='" + style + " dh'>" + column.shift() + "<span class='net'>" + column.shift() + "</span></td></tr>" );
+			$('div#data table').append( "<tr><td class='month name'>" + column.shift() + "</td><td class='usage'>" + column.shift() + "</td><td class='budget dh' " + title + ">" + column.shift() + "</td><td class='" + style + " dh'>" + column.shift() + "<span class='net'>" + column.shift() + "</span></td></tr>" );
 		}
 		((data['circuit'] != 'total') && (data['circuit'] != 'ashp')) ? $('.dh').hide() : $('.dh').show();
 		// $('th.budget,td.budget').hide();
+		$('div#data').append("<p class='notes'>All power values in kWh.</p>");
 		$('div#data').append("<p class='notes'>1. Circuit level data starts March 16, 2012.</p>");
-		if (data['circuit'] == 'ashp') $('div#data').append("<p class='notes'>2. Projection based on HDD base 50&deg;</p>");
+		if (data['circuit'] == 'ashp') $('div#data').append("<p class='notes'>2. Projected kWh = 0.2261 x HDD base 50&deg;F + 0.7565</p>");
 	}
 	function getProjectedHeatEnergy( hdd )
 	{
 		// makes it easier to adjust the formula in the future, returns kWh
 		// return hdd * 0.0769 + 4.7596; // HDD 58F base
-		console.log('hdd = ' + hdd);
 		// return hdd * 4.0015 + 17.0838; // HDD 27F base
 		return hdd * 0.2261 + 0.7565; // HDD 50F base 
 	}
@@ -797,12 +808,12 @@ $(document).ready(function()
 	}
 	function showHddTable( data )
 	{
-		// $('div#data').append( "<p><b>HDD (base 65&deg;)</b> : " + Math.round(data['total_hdd']) + "</p>" );
+		$('div#data').append( "<p><b>Wh/SF/HDD</b> : " +  ((data['total_ashp']*1000) / 1408 / data['total_hdd'] ).toFixed(6) + "</p>" );
 		$('div#data').append( "<p><b>BTU/SF/HDD</b> : " + ((data['total_ashp'] * 3412.14163) / 1408 / data['total_hdd']).toFixed(3) + "</p>" ); 
 		var d = Date.parse(data['coldest_hour'][1]);
-		$('div#data').append( "<p><b>Coldest temp.</b> : " + data['coldest_hour'][0] + "&deg;, Date: <a href='daily.html?option=4&date=" + d.toString('yyyy-MM-dd') + "&time=" + d.toString('HH') + "'>" + d.toString('M/d htt') + "</a></p>" );
+		$('div#data').append( "<p><b>Coldest temp.</b> : " + data['coldest_hour'][0] + "&deg;, Date: <a href='daily.html?option=4&date=" + d.toString('yyyy-MM-dd') + "&time=" + d.toString('HH') + "'>" + d.toString('M/d/yyyy htt') + "</a></p>" );
 		d = Date.parse(data['coldest_day'][1]);
-		$('div#data').append( "<p><b>Coldest day</b> : " + Number( data['coldest_day'][0] ).toFixed(1) + " HDD, Date: <a href='daily.html?option=4&date=" + d.toString('yyyy-MM-dd') + "'>" + d.toString('M/d') + "</a></p>" );
+		$('div#data').append( "<p><b>Coldest day</b> : " + Number( data['coldest_day'][0] ).toFixed(1) + " HDD, Date: <a href='daily.html?option=4&date=" + d.toString('yyyy-MM-dd') + "'>" + d.toString('M/d/yyyy') + "</a></p>" );
 		$('div#data').append( makeTags('table', 1) );
 		$('div#data table').append( "<tr><th></th><th class='lable usage'>Actual</th><th class='lable budget'>Estimated</th><th>Diff(%)<span class='net'>Net</span></th></tr>" );
 		var percChange = Math.round( (((data['totals_heating_season'][0])-data['totals_heating_season'][1]) / data['totals_heating_season'][1] ) * 100);
@@ -817,6 +828,8 @@ $(document).ready(function()
 			style = (percChange >= 0) ? "positive" : "negative";
 			$('div#data table').append( "<tr><td class='month name'>" + addDateAnchor( Date.parse( data['months'][i][0] ), 6 ) + "</td><td class='usage'>" + Math.round(data['months'][i][1]) + "</td><td class='budget'>" + Math.round(data['months'][i][2]) + "</td><td class='" + style + "'>" + percChange + "<span class='net'>" + Math.round(data['months'][i][1]-data['months'][i][2]) + "</span></td></tr>" );
 		}
+		$('div#data').append("<p class='notes'>Note. All HDD calculated using base 65&deg;F</p>");
+		$('div#data').append("<p class='notes'>Note. SF = 1,408</p>");
 	}
 	function showHddYTD( data )
 	{
@@ -919,8 +932,9 @@ $(document).ready(function()
 		if (today.getFullYear() == 2012)
 		{
 			// 2012 circuit level data ddn't start till 3/16
-			// so need to subtract Jan-Mar water vales for main and hot
+			// so need to subtract Jan-Mar water values for main and hot
 			// and subtract kWh for March
+			// so that the total values are accurate
 			var hot_water = 0; 
 			var main_water = 0;
 			var water_heater_kwh = 0;

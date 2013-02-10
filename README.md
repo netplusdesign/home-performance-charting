@@ -7,6 +7,13 @@ This app utilizes MySQL, PHP, jQuery, HighCharts and Javascript to view home ene
 
 Working version posted at http://netplusdesign.com/home_performance/monthly.html
 
+Version 4
+Feb 10, 2013
+
+- Fixes to enable multi-year navigation on daily view
+- Multi-year related bug fixes
+- Updates to hourly chart to display multiple temperature sensors 
+
 Version 3
 Jan 7, 2013
 

@@ -22,7 +22,7 @@
 	}
 
 	// 0) total used
-	$query = "SELECT SUM(used) FROM energy_monthly WHERE house_id = $house;"; 
+	$query = "SELECT SUM(used) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year;"; 
 	// 1) list by circuit, 2012 query must exclude 1/1 through 3/15
 	
 	/*

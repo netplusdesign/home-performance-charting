@@ -16,7 +16,6 @@
 			<div id="calendar">
 				<nav>
 					<select id="slice">
-						<option selected="selected" value='2012'>2012</option>
 					</select>
 					<select id="dice">
 						<optgroup label="Monthly">
@@ -95,7 +94,7 @@
     		// global variables
     		var houseId = 0;
     		var chart = null;
-    		var today, setDay;
+    		var today, setDay, chartDay; // setDay includes hour to highlight in day chart
 			var validDateRanges = []; // for base data (0-1) and circuit data (2-3)
 			var metaData = []; // defines data ranges, lables, mins and maxs
 			var dayData = []; // only used in calendar
@@ -114,23 +113,25 @@
 						};
 			
 			// set main navigation hadler
-			$("select#dice").change(function(event)
+			$("select#slice,select#dice").change(function(event)
 			{
-				params = "?date=" + today.toString('yyyy-MM-dd') + "&option=" + this.value;
-				if ( this.value == 19 ) 
+				var yr = parseInt( $("select#slice").val() );
+				today.set({ 'year' : yr });
+				currentOption = $("select#dice").val();
+				var params = "?date=" + today.toString('yyyy-MM-dd') + "&option=" + currentOption;
+				if ( currentOption == 19 ) 
 				{
 					// goto Interactive Bae Temp page
 					window.location.assign( "interactive_base_temp.html" + params );
 				}
-				else if ( this.value > 14 )
+				else if ( currentOption  > 14 )
 				{
-					// goto Monthly page
-					window.location.assign( "monthly.html" + params );	
+		   			// goto Monthly page
+		   			window.location.assign( "monthly.html" + params );	
 				}
 				else
 				{
-					update( this.value );
-					currentOption = this.value;
+					redrawCalendar(event);
 				}
 			});
     		if (currentOption = $.url().param("option"))
@@ -151,7 +152,23 @@
 			});
 
     		setupCalendar(); // integrate with redraw at some point in future
-
+    		
+    		// add functionality to back and forward arrows
+			$("<span id='getPrevMonth'><a href='\#'>&#9664;<\/a><\/span>").replaceAll('span#getPrevMonth');
+			$("span#getPrevMonth").click(function(event)
+			{
+				today.add({ 'months' : -1 }); 
+				$('select#slice option[value=' + today.getFullYear() + ']').prop('selected', true); 
+				redrawCalendar(event);
+			});
+			$("<span id='getNextMonth'><a href='\#'>&#9654;<\/a><\/span>").replaceAll('span#getNextMonth');
+			$("span#getNextMonth").click(function(event)
+			{
+				today.add({ 'months' : 1 });
+				$('select#slice option[value=' + today.getFullYear() + ']').prop('selected', true); 
+				redrawCalendar(event);
+			});
+			
 			// get initializing variables
 			$.get('get_daily_metadata.php?house='+houseId, function(data) 
 			{
@@ -165,7 +182,7 @@
 						for (i=0; i<items.length; i++)
 						{
 							dt = items[i].split('-'); // split date into parts
-							validDateRanges[i] = new Date(parseInt(dt[0]), parseInt(dt[1])-1); // creates a date
+							validDateRanges[i] = Date.parse(items[i]);
 						}
 					}
 					else 
@@ -194,6 +211,17 @@
 				}
 				utime = $.url().param("time") ? $.url().param("time") : null;
 				
+				// temporary solution for year selector
+				yrStart = validDateRanges[0].getFullYear();
+				//console.log('start = ' + yrStart);
+				yrEnd = validDateRanges[1].getFullYear();
+				//console.log('start = ' + yrEnd);
+				for (i=yrStart; i < yrEnd+1; i++)
+				{
+					selected = (i == today.getFullYear()) ? "selected='selected'" : '' ;
+					$("select#slice").append("<option " + selected + " value='" + i + "'>" + i + "</option>");
+				}
+				
 	    		// compose strings for first loads
     			monthFile = getMonthFilename( today ); 
 				dayFile = getDayFilename( today ); 
@@ -205,11 +233,11 @@
 			// read month day data 
 			function getCalendarData()
 			{
+				dayData.length = 0;
 				$.get(monthFile, function(data) 
 				{
 					// Split the lines
 					var lines = data.split('\n');  // splits the file into lines
-				
 					// initialize arrays
 					metaData[2] = []; // min array
 					metaData[3] = []; // max array
@@ -279,76 +307,95 @@
 			// update calendar
 			function update( v ) 
 			{
-				var dim = DaysInMonth( today );
+				var dim = Date.getDaysInMonth( today.getFullYear(), today.getMonth() );
 				var startDay = getStartDay( today );
 				var dayCount = 1;
 				// determine whether to show previous month link
-				if(today.getMonth() > validDateRanges[0].getMonth() )
+				/*
+				if( today.isAfter( validDateRanges[0] ) )
             	{
 	    			$("<span id='getPrevMonth'><a href='\#'>&#9664;<\/a><\/span>").replaceAll('span#getPrevMonth');
 					$("span#getPrevMonth").click(function(event)
 					{
-						today.setMonth( today.getMonth()-1 ); // will this work when moving from Jan 2013 to Dec 2012?
+						today.add({ 'months' : -1 }); 
+						$('select#slice option[value=' + today.getFullYear() + ']').prop('selected', true); 
 						redrawCalendar(event);
 					});
 				} else {
 					$("<span id='getPrevMonth'><\/span>").replaceAll('span#getPrevMonth');
 				}
 				// determine whether to show next month link
-				if(today.getMonth() < validDateRanges[1].getMonth() )
+				if( today.isBefore( validDateRanges[1] ) )
         	    {
 	    			$("<span id='getNextMonth'><a href='\#'>&#9654;<\/a><\/span>").replaceAll('span#getNextMonth');
 	    			$("span#getNextMonth").click(function(event)
     				{
-						today.setMonth( today.getMonth()+1 );
+						today.add({ 'months' : 1 });
+						$('select#slice option[value=' + today.getFullYear() + ']').prop('selected', true); 
 						redrawCalendar(event);
 					});
 				} else {
 					$("<span id='getNextMonth'><\/span>").replaceAll('span#getNextMonth');
 				}
+				*/
 				// update month and year
 				$("<span id='monthyear'>" + today.getMonthName() + " " + today.getFullYear() + "<\/span>").replaceAll('span#monthyear');
 				
 				// remove all content and calDay classes
 				$('<td><\/td>').replaceAll('td');
 				// rebuild content and classes
-				$('td').each(function(index, domEle) 
+				$('td').each( function(index, domEle) 
 				{
-					if((index >= startDay) && (dayCount <= dim)) 
+					if ( (index >= startDay) && (dayCount <= dim) ) 
 					{
-						// replace text and add calDay class
-						$(domEle).append(dayCount).attr('title',dayData[dayCount][v] + ' ' + metaData[1][v]);
-						if ( isNaN(dayData[dayCount][v]) )
+						if ( dayData.length > 3 )
 						{
-							$(domEle).addClass('no-data calday');
-						} 
-						else 
-						{
-							c = transition3(calPerc[dayCount][v], 100, colors[optArr[v]][0], colors[optArr[v]][1]);
-							$(domEle).attr('style', 'background: rgb(' + Math.round(c.r) + ',' + Math.round(c.g) + ',' + Math.round(c.b) + ')');
-							$(domEle).addClass('calday');
-						}
-						if (today.getDate() == dayCount)
-						{
-							$(domEle).addClass("selected");
-						}
-						
-						$(domEle).hover(function()
-						{
-			    			$(this).addClass("hover");
+							// replace text and add calDay class
+							if ( isNaN(dayData[dayCount][v]) )
+							{
+								$(domEle)
+									.append(dayCount)
+									.addClass('no-data calday');
+							} 
+							else 
+							{
+								c = transition3(calPerc[dayCount][v], 100, colors[optArr[v]][0], colors[optArr[v]][1]);
+								$(domEle)
+									.append(dayCount)							
+									.addClass('calday')
+									.attr('title', dayData[dayCount][v] + ' ' + metaData[1][v])
+									.attr('style', 'background: rgb(' + Math.round(c.r) + ',' + Math.round(c.g) + ',' + Math.round(c.b) + ')');
+							}
 
-						},function()
-						{
-     						$(this).removeClass("hover");
-   						});
-   						$(domEle).click(function(event)
-   						{
-      			    		$('td').removeClass("selected");
-      			    		$(this).addClass("selected");
-      			    		today.setDate( this.textContent );
-      			    		dayFile = getDayFilename( today );
-      			    		getDayData();
-     					});
+							// show border around day that is currently shown in chart
+							if ( (today.getDate() == dayCount) && (today.getMonth() == chartDay.getMonth()) && (today.getFullYear() == chartDay.getFullYear()) )
+							{
+								$(domEle).addClass("selected");
+							}
+							
+							$(domEle).hover(function()
+							{
+				    			$(this).addClass("hover");
+	
+							},function()
+							{
+	     						$(this).removeClass("hover");
+	   						});
+	   						$(domEle).click(function(event)
+	   						{
+	      			    		$('td').removeClass("selected");
+	      			    		$(this).addClass("selected");
+	      			    		today.setDate( this.textContent );
+	      			    		dayFile = getDayFilename( today );
+	      			    		getDayData();
+	     					});
+	     				}
+	     				else
+	     				{
+	     					$(domEle)
+	     						.append(dayCount)
+	     						.addClass('no-data calday');
+	     				}
 						dayCount++;
 					}
 				});
@@ -358,7 +405,7 @@
 				$("#high-range").replaceWith("<span id='high-range'>" + metaData[3][v] + " " + metaData[1][v-1] + "<\/span>");
 								
 				// show circuit level data if available
-				if( (today.getMonth() >= validDateRanges[2].getMonth()) && (today.getMonth() <= validDateRanges[3].getMonth()) )
+				if( today.isAfter( validDateRanges[2] ) && today.isBefore( validDateRanges[3] ) )
 				{
        				$("optgroup#circuits option").prop('disabled', false);
      			}
@@ -377,6 +424,7 @@
 			function getDayData() {
 				
 				if (chart != null) chart.showLoading('Loading data...');
+				chartDay = today.clone();
 				
 				$.get(dayFile, function(data) 
 				{ 
@@ -481,8 +529,8 @@
                 				series[i].name = items[i+1];
                 				series[i].data = [];
                 				if (i == 0) 
-                				{	
-                					series[i].zIndex = z;
+                				{	// adjusted load
+                					series[i].zIndex = 3;
                 					series[i].lineWidth = 5;
                 				}
                 				if (i > 0 && i < 3) 
@@ -490,12 +538,14 @@
                 					series[i].type = "area";
                 					series[i].lineWidth = 0;
                 				}
-                				if (i == 3) { series[i].yAxis = 1; } // indoor temp
-                				if (i == 4) { series[i].yAxis = 1; } // outdoor temp
-                				if (i == 5) { series[i].yAxis = 2; series[i].zIndex = z; } // hdd
-                				// 7 more columns for circuit-level data
-                				if (i > 5) { series[i].yAxis = 0; series[i].zIndex = z; }
-                				z++;
+                				if ((i > 2) && (i < 7)) series[i].yAxis = 1; // first floor, second floor, basement, outdoor temps
+                				
+                				if (i == 7) series[i].yAxis = 2; // hdd
+                				
+                				if (i > 7) series[i].yAxis = 0; // 7 more columns for circuit-level data
+                				
+                				if (i > 2) series[i].zIndex = z++;
+                				//z++;
                 			}
 						}
 						else
@@ -505,16 +555,16 @@
 							{
 								var tm = items[0].split(':'); // splits the time item
 								options.xAxis.categories.push(tm[0]); // hour
-								for (i = 0; i < items.length-1; i++) 
+								for (i = 1; i < items.length; i++) 
 								{	
-									// if eMon data and not a degree based value, then divide by 1000
-									if (i < 3 || i > 5)
+									// if not a degree based value, then divide by 1000
+									if ((i > 3) && (i < 9))
 									{
-										series[i].data.push( parseFloat( items[i+1] )/1000 );
+										series[i-1].data.push( parseFloat( items[i] ) );
 									}
 									else
 									{
-										series[i].data.push( parseFloat( items[i+1] ) );
+										series[i-1].data.push( parseFloat( items[i] ) / 1000 );
 									} 
 								}
 							}
@@ -529,18 +579,18 @@
 					
 					Highcharts.setOptions(
 					{
-        					colors: ['#CC9933', '#669933', '#336699', '#FF6600', '#3366CC', '#CC3333', '#FF9655', '#FFF263', '#6AF9C4']
+        					colors: ['#CC9933', '#669933', '#336699', '#DF0101', '#FF8000','#F7FE2E', '#58ACFA','#3366CC', '#CC3333', '#FF9655', '#FFF263', '#6AF9C4']
     				});
     				
     				if (chart == null) 
     				{
 						chart = new Highcharts.Chart(options);
 						for (i=3; i<series.length;i++) chart.series[i].hide();
-						chart.series[5].show();
+						chart.series[7].show();
 					}
-					chart.yAxis[0].setExtremes( metaData[0][1]/1000 , metaData[0][0]/1000 );  // min, max for kWh
-					chart.yAxis[1].setExtremes(metaData[0][2],metaData[0][3]);  // min, max for temp
-					chart.yAxis[2].setExtremes(0,metaData[0][4]);  // min, max for HDD
+					chart.yAxis[0].setExtremes( metaData[0][1]/1000, metaData[0][0]/1000 );  // min, max for kWh
+					chart.yAxis[1].setExtremes( metaData[0][2], metaData[0][3] );  // min, max for temp
+					chart.yAxis[2].setExtremes( 0, metaData[0][4] );  // min, max for HDD
 					
 					if (utime && (today.getTime() == setDay.getTime())) 
 					{ 
@@ -555,26 +605,19 @@
 					{
 						chart.series[i].setData(series[i].data);
 					}
-					chart.setTitle({ text: today.getMonthName() + ' ' + today.getDate() + ', ' + today.getFullYear() } );
+					chart.setTitle( { text: today.getMonthName() + ' ' + today.getDate() + ', ' + today.getFullYear() } );
 					chart.hideLoading();
 				}); // end get
 			}
 
 			function getMonthFilename( d )
 			{
-				//return "data/" + formatAddZero( (d.getMonth()+1).toString() ) + "-" + d.getFullYear() + "-day-data.csv";
-				return "get_daily_data.php?house=" + houseId + "&date=" + today.getFullYear() + "-" + formatAddZero( (today.getMonth()+1).toString() ) + "-" + formatAddZero( today.getDate().toString() );
+				return "get_daily_data.php?house=" + houseId + "&date=" + today.toString('yyyy-MM-dd');
 			}
 			
 			function getDayFilename( d )
 			{
-				return "get_hourly_data.php?house=" + houseId + "&date=" + today.getFullYear() + "-" + formatAddZero( (today.getMonth()+1).toString() ) + "-" + formatAddZero( today.getDate().toString() );
-			}
-
-			function formatAddZero( d ) 
-			{
-				if (d.length == 1) return d = "0" + d;
-				else return d;
+				return "get_hourly_data.php?house=" + houseId + "&date=" + today.toString('yyyy-MM-dd');
 			}
 			
 			function Color(space, a, b, c)
@@ -707,19 +750,18 @@
 				for (i=0; i<n; i++) { fstr = fstr + str; }
 				return fstr;
 			}
-			function DaysInMonth( d )
-			{
-				return new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-			}
 			function getStartDay( d )
 			{
 				return new Date(d.getFullYear(), d.getMonth(), 1).getDay(); 
-			}			
-			Date.prototype.getMonthName = function() 
+			}	
+			Date.prototype.isBefore = function( d )
 			{
-   				return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][this.getMonth()]; 
+				return d.getTime() > this.getTime() ? true : false; 
 			}
-	
+			Date.prototype.isAfter = function( d )
+			{
+				return d.getTime() < this.getTime() ? true : false; 
+			}
 		});
 		</script>
 	</body>
