@@ -3,28 +3,6 @@
  */
 $(document).ready(function() 
 {
-	// this first function fixes a orientation bug, via...
-	// http://webdesignerwall.com/tutorials/iphone-safari-viewport-scaling-bug
-	(function(doc) 
-	{
-		var addEvent = 'addEventListener',
-		type = 'gesturestart',
-		qsa = 'querySelectorAll',
-		scales = [1, 1],
-		meta = qsa in doc ? doc[qsa]('meta[name=viewport]') : [];
-		function fix() 
-		{
-		    meta.content = 'width=device-width,minimum-scale=' + scales[0] + ',maximum-scale=' + scales[1];
-		    doc.removeEventListener(type, fix, true);
-		}
-	    if ((meta = meta[meta.length - 1]) && addEvent in doc) 
-	    {
-	        fix();
-	        scales = [.25, 1.6];
-	        doc[addEvent](type, fix, true);
-	    }
-	}(document));
-
 	// global variables
 	var houseId = 0;
 	var today, asofDate;
@@ -816,9 +794,10 @@ $(document).ready(function()
 		$('div#data').append( "<p><b>Coldest day</b> : " + Number( data['coldest_day'][0] ).toFixed(1) + " HDD, Date: <a href='daily.html?option=4&date=" + d.toString('yyyy-MM-dd') + "'>" + d.toString('M/d/yyyy') + "</a></p>" );
 		$('div#data').append( makeTags('table', 1) );
 		$('div#data table').append( "<tr><th></th><th class='lable usage'>Actual</th><th class='lable budget'>Estimated</th><th>Diff(%)<span class='net'>Net</span></th></tr>" );
-		var percChange = Math.round( (((data['totals_heating_season'][0])-data['totals_heating_season'][1]) / data['totals_heating_season'][1] ) * 100);
-		style = (percChange >= 0) ? "positive" : "negative";
-		$('div#data table').append( "<tr><th class='name'>Heating season</th><th class='total'>" + Math.round(data['totals_heating_season'][0]) + "</th><th class='total'>" + Math.round(data['totals_heating_season'][1]) + "</th><th class='" + style + "'>" + percChange + "</th></tr>" );
+		// removed heating season values, values selected from db were incorrect, bad SQL statement 
+		// var percChange = Math.round( (((data['totals_heating_season'][0])-data['totals_heating_season'][1]) / data['totals_heating_season'][1] ) * 100);
+		// style = (percChange >= 0) ? "positive" : "negative";
+		// $('div#data table').append( "<tr><th class='name'>Heating season</th><th class='total'>" + Math.round(data['totals_heating_season'][0]) + "</th><th class='total'>" + Math.round(data['totals_heating_season'][1]) + "</th><th class='" + style + "'>" + percChange + "</th></tr>" );
 		var percChange = Math.round( (((data['totals'][0])-data['totals'][1]) / data['totals'][1] ) * 100);
 		style = (percChange >= 0) ? "positive" : "negative";
 		$('div#data table').append( "<tr><th class='name'>YTD</th><th class='total'>" + Math.round(data['totals'][0]) + "</th><th class='total'>" + Math.round(data['totals'][1]) + "</th><th class='" + style + "'>" + percChange + "</th></tr>" );
@@ -969,26 +948,7 @@ $(document).ready(function()
 		
 	function addDateAnchor( d, option )
 	{
-		// date is a date
-		if ((d.getFullYear() == 2012) && (d.getMonth() > 0)) 
-		{
-			option = (option) ? "&option=" + option : "";
-			return "<a href='daily.html?date=" + d.toString('yyyy-MM') + option + "'>" + d.toString('MMM') + "</a>"; 
-		}
-		else 
-		{
-			return d.toString('MMM');
-		}
-	}
-	function setupCalendar()
-	{
-		$('table').append( makeTags('tr', 6) );
-		$('tr').each(function(index, domEle) { $(domEle).append( makeTags('td', 7) ) });
-	}
-	function makeTags(tag, n) 
-	{
-		var str = '<' + tag + '></' + tag + '>', fstr = '';
-		for (i=0; i<n; i++) { fstr = fstr + str; }
-		return fstr;
+		option = (option) ? "&option=" + option : "";
+		return "<a href='daily.html?date=" + d.toString('yyyy-MM') + option + "'>" + d.toString('MMM') + "</a>"; 
 	}
 });

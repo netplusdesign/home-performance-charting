@@ -7,6 +7,23 @@ This app utilizes MySQL, PHP, jQuery, HighCharts and Javascript to view home ene
 
 Working version posted at http://netplusdesign.com/home_performance/monthly.html
 
+Requires the following Javascript libraries, not included in this repo:
+- jquery-1.7.1.min.js — I have not tested on more recent versions
+- jquery.cookie.js
+- purl.js — v2.2.1 — newer versions available at https://github.com/allmarkedup/purl
+- date.js - from Google
+- highcharts.js v2.3.5 — not tested on more recent versions
+
+
+Version 4.1
+Nov 30, 2013
+
+- Bad query is generating incorrect values for HDD in heating season. Removed from UI until query can be fixed.
+- Updated Readme.md to indicate required javascript libraries
+- Added common.js — should have been included since v2
+- Added base-temp.js — should have been included since v2
+- There is a known issue with the interactive_base_temp.html page. Highcharts v2.3.5 can only display a limited number of data points. Hoping to try a new version soon and see if this is fixed.
+
 Version 4
 Feb 10, 2013
 

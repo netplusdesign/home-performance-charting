@@ -50,8 +50,9 @@ FROM (SELECT SUM(hdd) AS 'hdd' FROM hdd_daily WHERE house_id = 0 AND YEAR(date) 
 	WHERE td.house_id = 0 
 		AND td.house_id = es.house_id 
 		AND td.date = es.date;
-	 * */
-	// 3) total hdd and total estimated hdd during heating season
+		 * */
+		// 3) total hdd and total estimated hdd during heating season
+		// Removed from UI. Not giving correct values. 
 	$query .= "SELECT SUM(td.hdd), SUM(es.hdd) FROM (SELECT house_id, date, hdd FROM hdd_monthly WHERE YEAR(date) = $year AND MONTH(date) < 6 OR MONTH(date) > 8) td, (SELECT house_id, date, hdd FROM estimated_monthly WHERE YEAR(date) = $year AND MONTH(date) < 6 OR MONTH(date) > 8) es WHERE td.house_id = $house AND td.house_id = es.house_id AND td.date = es.date;";
 
 	/*
