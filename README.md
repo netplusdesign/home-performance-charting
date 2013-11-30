@@ -15,6 +15,11 @@ Requires the following Javascript libraries, not included in this repo:
 - highcharts.js v2.3.5 — not tested on more recent versions
 
 
+Version 4.1.1
+Nov 30, 2013
+
+- Added daily.js — should have been included since v2
+
 Version 4.1
 Nov 30, 2013
 
