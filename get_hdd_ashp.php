@@ -13,6 +13,7 @@
 		$base = get_post($link, 'base');
 		$period = get_post($link, 'period');
 		$house = get_post($link, 'house');
+		date_default_timezone_set('America/New_York');
 		$year = date_format(date_create( get_post($link, 'date') ), 'Y');
 	} 
 	else 
