@@ -11,39 +11,68 @@ $(document).ready(function()
 	var chartOption = new Object();
 	chartOption.type = 'scatter';
 	chartOption.series = 'single';
-	var today;
+	var today, asofDate;
 	
-	setupSelectDice();
-	setToday();
-	setupUpdateButton();
-	setupOptions();
-	plot();
+	getMetaData();
 	
-	function setupSelectDice()
-	{
-		$("select#dice").change(function(event)
+	function getMetaData()
+	{	// get initializing variables
+		$.getJSON("get_monthly_metadata.php", { house: houseId }, function( json ) 
 		{
-			params = today ? "?date=" + today.toString('yyyy-MM-dd') + "&" : "?";
-			params = params + "option=" + this.value;
-			if ( this.value < 15 )
-			{
-	   			// goto Daily page
-	   			window.location.assign( "daily.html" + params );	
-			}
-			else
-			{
-				// goto Monthly page
-				window.location.assign( "monthly.html" + params );
-			}
+			asofDate = Date.parse( json['asof'] );
+			setToday();
+			showYearSelector( json['years'] );
+			showAsofDate();
+			setupUpdateButton();
+			setupOptions();
+			plot();
 		});
 	}
+	function showAsofDate()
+	{
+		$('p#sample').before( "<p id='asof'>As of: " + asofDate.toString('MMM d, yyyy') );
+	}
+	function showYearSelector( data )
+	{
+		for (i=0; i<data.length; i++)
+		{
+			selected = (data[i] == today.getFullYear()) ? "selected='selected'" : '' ;
+			$("select#slice").append("<option " + selected + " value='" + data[i] + "'>" + data[i] + "</option>");
+		}
+	}
+
+	$("select#slice,select#dice").change(function(event)
+	{
+		var yr = parseInt( $("select#slice").val() );
+		today.set({ 'year' : yr });	
+	});
+	$("select#dice").change(function(event)
+	{
+		params = today ? "?date=" + today.toString('yyyy-MM-dd') + "&" : "?";
+		params = params + "option=" + this.value;
+		if ( this.value < 15 )
+		{
+   			// goto Daily page
+   			window.location.assign( "daily.html" + params );	
+		}
+		else
+		{
+			// goto Monthly page
+			window.location.assign( "monthly.html" + params );
+		}
+	});
 	
 	function setToday()
 	{
-		// set date if any
+		// set date
 		if (udate = $.url().param("date"))
 		{
 			today = Date.parse( udate );
+		}
+		else
+		{
+			today = asofDate.clone(); 
+			today.moveToFirstDayOfMonth(); 
 		}
 	}
 	
@@ -70,7 +99,7 @@ $(document).ready(function()
 		if (chart) chart.showLoading('Loading data...');
 		var base = $('input#base').val();
 		var period = $('input:radio[name=period]:checked').val();
-		var dfile = "get_hdd_ashp.php?base=" + base + "&period=" + period + "&house=" + houseId;
+		var dfile = "get_hdd_ashp.php?base=" + base + "&period=" + period + "&house=" + houseId + "&date=" + today.toString('yyyy-MM-dd');
 		series = [];
 		xr = [];
 		yr = [];
