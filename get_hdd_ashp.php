@@ -41,7 +41,7 @@
 	$query['hours'] .= "AND YEAR(e.date) = $year ";
 	$query['hours'] .= "AND t.temperature < $base ";
 	$query['hours'] .= "AND e.ashp > 0 ";
-	$query['hours'] .= "LIMIT 1000";
+	// $query['hours'] .= "LIMIT 1000";
 	/*
 	SELECT SUM(t.hdd), SUM(e.ashp)/1000.0, t.temperature, e.date 
 	FROM (SELECT house_id, date, temperature, IF(((68 - temperature) * 1 / 24) > 0, (68 - temperature) * 1 / 24, 0) AS 'hdd' FROM temperature_hourly WHERE device_id = 0) t, energy_hourly e

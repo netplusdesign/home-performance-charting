@@ -137,6 +137,7 @@ $(document).ready(function()
 				},
 				plotOptions: {
 					series: {
+						turboThreshold : 0,
         				point: {
             				events: {
                 				mouseOver: function() {
