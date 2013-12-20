@@ -12,8 +12,12 @@ Requires the following Javascript libraries, not included in this repo:
 - jquery.cookie.js
 - purl.js — v2.2.1 — newer versions available at https://github.com/allmarkedup/purl
 - date.js - from Google
-- highcharts.js v2.3.5 — not tested on more recent versions
+- highcharts.js v3.0.7 — earlier versions may have point limitations < 1000
 
+
+Version 4.1.2-3
+
+- Added plotOptions.series.turboThreshold = 0 to base-temp.js to fix problem with high charts not showing more than 1000 points.
 
 Version 4.1.1
 Nov 30, 2013
