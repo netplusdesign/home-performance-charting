@@ -62,6 +62,11 @@ $(document).ready(function()
 		}
 	});
 	
+	$( "span#showinfo" ).click(function() {
+		$( "p#moreinfo" ).toggle();
+	});
+
+	
 	function setToday()
 	{
 		// set date
@@ -148,7 +153,7 @@ $(document).ready(function()
                 						if (currentOption == 'hours') dt = d.toString('MMM d, yyyy h tt');
                 						if (currentOption == 'days') dt = d.toString('MMM d, yyyy');
                 						if (currentOption == 'months') dt = d.toString('MMM, yyyy');
-                						$('p#reporting').html("HDD: " + Math.round(this.x*1000)/1000 + "<br />kWh: " + this.y + "<br />Temperature: " + this['temp'] + "&deg;F<br />Date: " + dt );
+                						$('p#reporting').html("HDD: " + Math.round(this.x*1000)/1000 + "<br />kWh: " + this.y + "<br />Solar: " + this['solar'] + "<br />Temperature: " + this['temp'] + "&deg;F<br />Date: " + dt );
                     				}
                 				},
                 				click: function() {
@@ -169,7 +174,7 @@ $(document).ready(function()
     				},
       				scatter: {
             			marker: {
-                			radius: 5
+                			radius: 5 
             			},
             			states: {
                 			hover: {
@@ -202,7 +207,8 @@ $(document).ready(function()
 				xr[lineNo] = parseFloat(items[0]);
 				yr[lineNo] = parseFloat(items[1]);
 
-				points[i].push( { temp : items[2], date: items[3], x : parseFloat(items[0]), y : parseFloat(items[1]) } );
+				points[i].push( { temp : items[2], date : items[3], solar : parseFloat(items[4]), x : parseFloat(items[0]), y : parseFloat(items[1]) } );
+
 				if ((currentOption == 'hours') && (chartOption.series == 'multiple'))
 				{
 					d = Date.parse( items[3] );

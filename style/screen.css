@@ -13,6 +13,8 @@ a { text-decoration: none; }
 	a:visited { color: #045FB4; }
 	a:hover { text-decoration: underline; }
 	
+span#showinfo { color: #669933; text-decoration: underline; }
+	
 input[type="button"] { background: #669933; border: 1px solid #999999; padding-bottom: 2px; }
 
 div#calendar { float: left; width: 25.454545%; margin: 0; padding: 0;  } /* 280 / 1100 */

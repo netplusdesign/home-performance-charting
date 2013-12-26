@@ -54,9 +54,10 @@
 					</optgroup>
 				</select>
 				</nav>
-				<p id="sample">Sample detail:</p>
+				<p id="sample">Sample detail: <span id="showinfo">(more info)</span></p>
+				<p id="moreinfo" style="display: none">This is a linear regression analysis correlating HDD to kWh used by our ASHP. Periods with significant sun (> 500 watt-hours) were removed to limit the effect of passive heating from the sun. Learn more about using linear regression analysis on energy consumption data at <a href="http://www.degreedays.net/regression-analysis" target="_blank">DegreeDays.net</a>.</p>
 				<ul>
-					<li><input type="radio" id="hours" name="period" value="hours" /><label for="hours">Hours</label> (first 1000 hours only) <a id="optionButton" href="#" style="display: none;">Options</a></li>
+					<li><input type="radio" id="hours" name="period" value="hours" /><label for="hours">Hours</label> <a id="optionButton" href="#" style="display: none;">Options</a></li>
 					<li id="options" style="display: none;"><input type="checkbox" id="seriesOption" name="series" value="series" /><label for="seriesOption">Multi-series</label> <input type="radio" id="pointOption" name="options" value="scatter" checked="checked" /><label for="pointOption">Points</label> <input type="radio" id="lineOption" name="options" value="line" /><label for="lineOption">Lines</label></li>
 					<li><input type="radio" id="days" name="period" value="days" /><label for="days">Days</label></li>
 					<li><input type="radio" id="months" name="period" value="months" checked="checked" /><label for="months">Months</label></li>

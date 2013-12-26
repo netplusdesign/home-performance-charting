@@ -12,8 +12,13 @@ Requires the following Javascript libraries, not included in this repo:
 - jquery.cookie.js
 - purl.js — v2.2.1 — newer versions available at https://github.com/allmarkedup/purl
 - date.js - from Google
-- highcharts.js v3.0.7 — earlier versions may have point limitations < 1000
+- highcharts.js v3.0.7 — earlier versions may not display charts with > 1000 data points
 
+Version 4.2
+
+- Significantly improved query response time for Base Temperature Analysis screen.
+- Base Temperature Analysis now filters out hours with more than 500 Wh to limit effects of passive solar heating
+- Base Temperature Analysis queries now return solar kWh.
 
 Version 4.1.2-3
 
