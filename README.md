@@ -14,11 +14,16 @@ Requires the following Javascript libraries, not included in this repo:
 - date.js - from Google
 - highcharts.js v3.0.7 — earlier versions may not display charts with > 1000 data points
 
-Version 4.2
+Version 4.2.5
+
+- Fixed sql bug caused on Jan 8 by replacing battery in 1st floor temperature sensor. Minutes and seconds now ignored when joining tables.
+
+Version 4.2.4
 
 - Significantly improved query response time for Base Temperature Analysis screen.
 - Base Temperature Analysis now filters out hours with more than 500 Wh to limit effects of passive solar heating
 - Base Temperature Analysis queries now return solar kWh.
+- Fixed SQL query bug noted in v.4.1
 
 Version 4.1.2-3
 
