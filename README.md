@@ -14,6 +14,11 @@ Requires the following Javascript libraries, not included in this repo:
 - date.js - from Google
 - highcharts.js v3.0.7 — earlier versions may not display charts with > 1000 data points
 
+Version 4.2.6
+
+- Added eGauge support
+- Added index.html
+
 Version 4.2.5
 
 - Fixed sql bug caused on Jan 8 by replacing battery in 1st floor temperature sensor. Minutes and seconds now ignored when joining tables.
