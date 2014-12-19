@@ -6,7 +6,6 @@
 
     if (mysqli_connect_errno()) {
         printf("Connect failed: %s\n", mysqli_connect_error());
-        exit();
     }
 
 	date_default_timezone_set('America/New_York');
@@ -29,10 +28,10 @@
 SELECT SUM(used), SUM(water_heater), SUM(ashp), SUM(water_pump), SUM(dryer), SUM(washer), SUM(dishwasher), SUM(stove), SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) AS 'Other' 
 FROM energy_monthly 
 WHERE house_id = 0 
-	AND YEAR(date) = 2012
-	AND device_id = 5;
+	AND YEAR(date) = 2014
+	AND (device_id = 5 OR device_id = 10);
 	 * */
-	$query .= "SELECT SUM(used), SUM(water_heater), SUM(ashp), SUM(water_pump), SUM(dryer), SUM(washer), SUM(dishwasher), SUM(stove), SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5;";
+	$query .= "SELECT SUM(used), SUM(water_heater), SUM(ashp), SUM(water_pump), SUM(dryer), SUM(washer), SUM(dishwasher), SUM(stove), SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND (device_id = 5 OR device_id = 10);";
 
 	// break down values monthly
 	$circuit = null;
@@ -56,19 +55,19 @@ WHERE house_id = 0
 		FROM energy_monthly 
 		WHERE house_id = 0 
 			AND YEAR(date) = 2012 
-			AND device_id = 5;
+			AND (device_id = 5 OR device_id = 10);
 		 * */
-		$query .= "SELECT SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5;";
+		$query .= "SELECT SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND (device_id = 5 OR device_id = 10);";
 		/*
 		SELECT date, SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) 
 		FROM energy_monthly 
 		WHERE house_id = 0
 			AND YEAR(date) = 2012 
-			AND device_id = 5 
+			AND (device_id = 5 OR device_id = 10) 
 		GROUP BY MONTH(date);
 		 * */
 		// 4) circuit by month
-		$query .= "SELECT date, SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5 GROUP BY MONTH(date);";
+		$query .= "SELECT date, SUM(used)-(SUM(water_heater)+SUM(ashp)+SUM(water_pump)+SUM(dryer)+SUM(washer)+SUM(dishwasher)+SUM(stove)) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND (device_id = 5 OR device_id = 10) GROUP BY MONTH(date);";
 	}
 	else if ($circuit == 'total') 
 	{
@@ -116,9 +115,9 @@ WHERE house_id = 0
 			$query .= "SELECT 1+1;";
 		}
 		// 3) circuit total
-		$query .= "SELECT SUM($circuit) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5;";
+		$query .= "SELECT SUM($circuit) FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND (device_id = 5 OR device_id = 10);";
 		// 4) circuit by month
-		$query .= "SELECT date, $circuit FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND device_id = 5 GROUP BY MONTH(date);";
+		$query .= "SELECT date, $circuit FROM energy_monthly WHERE house_id = $house AND YEAR(date) = $year AND (device_id = 5 OR device_id = 10) GROUP BY MONTH(date);";
 	}
 	
 	$output = array(
