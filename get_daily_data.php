@@ -21,7 +21,8 @@
 		LEFT JOIN energy_daily e ON e.date = tu.date AND e.house_id = tu.house_id
 	WHERE tu.house_id = 0
 		AND YEAR(tu.date) = 2012
-		AND MONTH(tu.date) = 3;
+		AND MONTH(tu.date) = 3
+	ORDER BY e.date;
 		 * */
 		
 	    $query = "SELECT tu.date, e.adjusted_load, e.solar, e.used, ";
@@ -33,13 +34,14 @@
 		$query .= "LEFT JOIN energy_daily e ON e.date = tu.date AND e.house_id = tu.house_id ";
 		$query .= "WHERE tu.house_id = $house ";
 		$query .= "AND YEAR(tu.date) = " . date_format(date_create($date), 'Y') . " ";
-		$query .= "AND MONTH(tu.date) = " . date_format(date_create($date), 'm');
+		$query .= "AND MONTH(tu.date) = " . date_format(date_create($date), 'm') . " ";
+		$query .= "ORDER BY e.date;";
 		
 		if ($result = mysqli_query($link, $query))
 		{ 
 			while ($row = mysqli_fetch_row($result)) 
 			{
-				echo date_format(date_create($row[0]), 'm/d/Y') . "," . $row[1] . "," . $row[2] . "," . $row[3] . "," . $row[4] . "," . $row[5] . ",";
+				echo date_format(date_create($row[0]), 'Y-m-d') . "," . $row[1] . "," . $row[2] . "," . $row[3] . "," . $row[4] . "," . $row[5] . ",";
 				echo $row[6] . "," . $row[7] . "," . $row[8] . "," . $row[9] . "," . $row[10] . "," . $row[11] . "," . $row[12] . "," . $row[13] . "," . $row[14] . "\r\n";
 			}
 			mysqli_free_result($result);
