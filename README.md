@@ -1,11 +1,11 @@
 home-performance-charting
 =========================
 
+> Replaced by [home-performance-ang-flask](https://github.com/netplusdesign/home-performance-ang-flask)
+
 Visualize your home energy and temperature data.
 
 This app utilizes MySQL, PHP, jQuery, HighCharts and Javascript to view home energy usage, energy generation and temperature data. I use an eMonitor and HOBO Data Loggers to track my net zero home performance. 
-
-Working version posted at http://netplusdesign.com/home_performance/monthly.html
 
 Requires the following Javascript libraries, not included in this repo:
 - jquery-1.7.1.min.js — I have not tested on more recent versions
